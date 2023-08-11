@@ -16,12 +16,15 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/ColorRGBA.h>
 #include <tf/transform_broadcaster.h>
 #include <image_transport/image_transport.h>
-#include <pcl_ros/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+
 #include <svo/global.h>
 #include <svo/common/types.h>
 
@@ -45,7 +48,8 @@ class Visualizer
 public:
   typedef std::shared_ptr<Visualizer> Ptr;
   typedef pcl::PointXYZI PointType;
-  typedef pcl::PointCloud<PointType> PointCloud;
+  typedef pcl::PointCloud <PointType> PointCloud;
+  
 
   static std::string kWorldFrame;
 
@@ -69,6 +73,7 @@ public:
   ros::Publisher pub_markers_;
   ros::Publisher pub_pc_;
   PointCloud::Ptr pc_;
+  sensor_msgs::PointCloud2::Ptr pc2;
   std::vector<ros::Publisher> pub_cam_poses_;
   std::vector<ros::Publisher> pub_dense_;
   std::vector<image_transport::Publisher> pub_images_;

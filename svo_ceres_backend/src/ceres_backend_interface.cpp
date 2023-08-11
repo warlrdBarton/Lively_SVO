@@ -587,7 +587,7 @@ void CeresBackendInterface::setPerformanceMonitor(const std::string& trace_dir)
   g_permon_backend_->addLog("marginalization");
   g_permon_backend_->addLog("fixation");
   g_permon_backend_->addLog("n_fixed_lm");
-  for (const auto k : MarginalizationTiming::names_)
+  for (const auto &k : MarginalizationTiming::names_)
   {
     g_permon_backend_->addLog(k);
   }
@@ -648,7 +648,7 @@ void CeresBackendInterface::optimizationLoop()
       if (g_permon_backend_)
       {
         g_permon_backend_->log("marginalization", timer.stop());
-        for (const auto k : MarginalizationTiming::names_)
+        for (const auto &k : MarginalizationTiming::names_)
         {
           g_permon_backend_->log(k, mag_timing.get(k));
         }

@@ -21,6 +21,7 @@
   <depend>image_transport</depend>
   <depend>nodelet</depend>
   <depend>roscpp</depend>
+  <depend>rosconsole</depend>
   <depend>minkindr</depend>
   <depend>nav_msgs</depend>
   <depend>pcl_ros</depend>

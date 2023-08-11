@@ -390,7 +390,7 @@ void SvoInterface::stereoCallback(
 
   if(svo_->stage() == Stage::kPaused && automatic_reinitialization_)
     svo_->start();
-
+  
   imageCallbackPostprocessing();
 }
 

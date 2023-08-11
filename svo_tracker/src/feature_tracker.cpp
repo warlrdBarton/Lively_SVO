@@ -234,7 +234,11 @@ void FeatureTracker::resetActiveTracks()
 void FeatureTracker::resetTerminatedTracks()
 {
   for(auto& track : terminated_tracks_)
-    track.clear();
+  {
+    //track.clear();
+    svo::FeatureTracks().swap(track);
+  }
+    
 }
 
 void FeatureTracker::reset()

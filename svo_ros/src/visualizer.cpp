@@ -77,6 +77,7 @@ void publishLineList(
   marker.color.b = color(2);
   pub.publish(marker);
 }
+
 void publishPositionVecAsPC(
     ros::Publisher& pub,
     const std::vector<rpg::PositionVec>& vec_of_position_vec,
@@ -103,7 +104,9 @@ void publishPositionVecAsPC(
       pc.push_back(pt);
     }
   }
-  pub.publish(pc);
+  sensor_msgs::PointCloud2 pc_msg;
+  pcl::toROSMsg(pc, pc_msg);
+  pub.publish(pc_msg);
 }
 
 void publishStringsAtPositions(
@@ -175,7 +178,7 @@ Visualizer::Visualizer(const std::string& trace_dir,
       pnh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose_imu", 10);
   pub_info_ = pnh_.advertise<svo_msgs::Info>("info", 10);
   pub_markers_ = pnh_.advertise<visualization_msgs::Marker>("markers", 100);
-  pub_pc_ = pnh_.advertise<PointCloud>("pointcloud", 1);
+  pub_pc_ = pnh_.advertise<sensor_msgs::PointCloud2>("pointcloud", 1);
   pub_dense_.resize(n_cameras);
   pub_images_.resize(n_cameras);
   pub_cam_poses_.resize(n_cameras);
@@ -194,8 +197,8 @@ Visualizer::Visualizer(const std::string& trace_dir,
   pose_graph_map_.header.frame_id = kWorldFrame;
   pub_loop_closure_ =
       pnh_.advertise<visualization_msgs::Marker>("loop_closures", 10);
-  pub_pose_graph_ = pnh_.advertise<PointCloud>("pose_graph", 10);
-  pub_pose_graph_map_ = pnh_.advertise<PointCloud>("pose_graph_pointcloud", 10);
+  pub_pose_graph_ = pnh_.advertise<sensor_msgs::PointCloud2>("pose_graph", 10);
+  pub_pose_graph_map_ = pnh_.advertise<sensor_msgs::PointCloud2>("pose_graph_pointcloud", 10);
 #endif
 
 #ifdef SVO_GLOBAL_MAP
@@ -566,8 +569,11 @@ void Visualizer::publishSeedsAsPointcloud(const Frame& frame,
       pc_->push_back(p);
     }
   }
+  sensor_msgs::PointCloud2 pc2;
+  toROSMsg(*pc_,pc2);
   VLOG(30) << "Publish pointcloud of size " << pc_->size();
-  pub_pc_.publish(pc_);
+  //pc2->header = pc_->header;
+  pub_pc_.publish(*boost::make_shared<sensor_msgs::PointCloud2>(pc2));
 }
 
 void Visualizer::publishSeedsUncertainty(const Map::Ptr& map)
@@ -652,7 +658,9 @@ void Visualizer::publishMapRegion(const std::vector<FramePtr>& frames)
       }
     }
     VLOG(100) << "Publish pointcloud of size " << pc_->size();
-    pub_pc_.publish(pc_);
+    sensor_msgs::PointCloud2 pc2;
+    toROSMsg(*pc_,pc2);
+    pub_pc_.publish(*boost::make_shared<sensor_msgs::PointCloud2>(pc2));
   }
 
   if (pub_points_.getNumSubscribers() > 0)
@@ -879,7 +887,10 @@ bool Visualizer::publishPoseGraph(const std::vector<KeyFramePtr>& kf_list,
       pt.intensity = 60;
       pose_graph_pc.push_back(pt);
     }
-    pub_pose_graph_.publish(pose_graph_pc);
+    sensor_msgs::PointCloud2 pose_graph_pc2;
+    pcl::toROSMsg(pose_graph_pc, pose_graph_pc2);
+
+    pub_pose_graph_.publish(*boost::make_shared<sensor_msgs::PointCloud2>(pose_graph_pc2));
   }
 
   if (pub_pose_graph_map_.getNumSubscribers() > 0 &&
@@ -924,7 +935,10 @@ bool Visualizer::publishPoseGraph(const std::vector<KeyFramePtr>& kf_list,
         pose_graph_map_.push_back(pt);
       }
     }
-    pub_pose_graph_map_.publish(pose_graph_map_);
+    sensor_msgs::PointCloud2 pose_graph_pc2;
+    pcl::toROSMsg(pose_graph_map_, pose_graph_pc2);
+
+    pub_pose_graph_map_.publish(*boost::make_shared<sensor_msgs::PointCloud2>(pose_graph_pc2));
   }
   return pc_recalculated;
 }
