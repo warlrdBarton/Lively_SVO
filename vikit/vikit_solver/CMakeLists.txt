@@ -3,7 +3,8 @@ project(vikit_solver)
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
-SET(CMAKE_BUILD_TYPE Release) # Release, RelWithDebInfo
+#SET(CMAKE_BUILD_TYPE Release) # Release, RelWithDebInfo
+set(CMAKE_BUILD_TYPE Release) 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11")
 
 #############

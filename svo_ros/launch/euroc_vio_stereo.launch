@@ -22,6 +22,6 @@
   </node>
 
   <!-- RVIZ -->
-  <!-- <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config_vio.rviz" /> -->
+  <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config_vio.rviz" />
 
 </launch>

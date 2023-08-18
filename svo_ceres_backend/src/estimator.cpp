@@ -153,7 +153,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
   SpeedAndBias speed_and_bias;
 
   // initialization or propagate the IMU
-  if (states_.ids.empty())
+  if (states_.ids.empty())//states_ 存储了所有的已经经过优化的状态，ｅｓｔｉｍａｔｏｒ是一个后端估计器，ｍａｐ是存储参数和残差块的图结构
   {
     if(is_reinit_)
     {
@@ -201,7 +201,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
     int num_used_imu_measurements =
         ceres_backend::ImuError::propagation(
           imu_measurements, imu_parameters_.at(0), T_WS, speed_and_bias,
-          last_timestamp, timestamp, nullptr, nullptr);
+          last_timestamp, timestamp, nullptr, nullptr);//积分后的值
     T_WS.getRotation().normalize();
     //! @todo could check this sooner if we select IMU measurements as we do
 //    DEBUG_CHECK(num_used_imu_measurements > 1) << "propagation failed";

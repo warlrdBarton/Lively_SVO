@@ -7,6 +7,7 @@ namespace svo {
 
 /// The state of a ViNode (pose, velocity and bias). 
 /// From SWE.
+///dgz change
 class ViNodeState {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -34,6 +35,8 @@ class ViNodeState {
   inline const Transformation& get_T_W_B() const { return T_W_B_; }
   inline Transformation& get_T_W_B() { return T_W_B_; }
   inline const Eigen::Vector3d& get_W_v_B() const { return W_v_B_; }
+  inline const Eigen::Vector3d& get_W_g_B() const { return W_g_B_; }
+
   inline const Eigen::Vector3d& getAccBias() const { return acc_bias_; }
   inline const Eigen::Vector3d& getGyroBias() const { return gyro_bias_; }
 
@@ -44,6 +47,8 @@ class ViNodeState {
 
   inline void set_T_W_B(const Transformation& T_W_B) { T_W_B_ = T_W_B; }
   inline void set_W_v_B(const Eigen::Vector3d& W_v_B) { W_v_B_ = W_v_B; }
+
+  inline void set_W_g_B(const Eigen::Vector3d& I_g_B) {W_g_B_ = T_W_B_* I_g_B;}
   inline void setAccBias(const Eigen::Vector3d& acc_bias)
   {
     acc_bias_ = acc_bias;
@@ -62,6 +67,9 @@ class ViNodeState {
   Eigen::Vector3d acc_bias_;
   /// The gyroscope bias (rad/s).
   Eigen::Vector3d gyro_bias_;
+
+  // the gyroscope rad/s * rotato vector
+  Eigen::Vector3d W_g_B_;
 };
 
 } // namespace svo

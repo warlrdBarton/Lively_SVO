@@ -1,6 +1,6 @@
 project(svo_ceres_backend)
 cmake_minimum_required(VERSION 2.8.3)
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 find_package(catkin_simple REQUIRED)
@@ -16,6 +16,10 @@ if (OPENMP_FOUND)
   message(STATUS "OpenMP found")
   add_definitions(-DUSE_OPENMP)
 endif ()
+
+
+# publish twist topic
+add_definitions(-DPUB_TWIST)
 
 #############
 # LIBRARIES #

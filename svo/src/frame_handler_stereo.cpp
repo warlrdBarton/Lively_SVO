@@ -80,6 +80,7 @@ UpdateResult FrameHandlerStereo::processFirstFrame()
   frame_utils::getSceneDepth(new_frames_->at(0), depth_median_, depth_min_, depth_max_);
   depth_filter_->addKeyframe(new_frames_->at(0), depth_median_, 0.5*depth_min_, depth_median_*1.5);
 
+
   SVO_INFO_STREAM("Init: Selected first frame.");
   stage_ = Stage::kTracking;
   tracking_quality_ = TrackingQuality::kGood;

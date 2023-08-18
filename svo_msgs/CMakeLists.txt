@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(svo_msgs)
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 # search for everything we need to build the messages, dont forget the message_generation

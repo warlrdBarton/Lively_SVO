@@ -914,6 +914,7 @@ bool LoopClosing::tracePoseGraph(const std::string& path) const
     return true;
   }
   trace.close();
+  return true;
 }
 
 bool LoopClosing::traceTimingData(const std::string& path) const

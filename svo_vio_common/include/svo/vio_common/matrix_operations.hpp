@@ -64,6 +64,12 @@ inline Eigen::Matrix<FloatType,4,4> quaternionOplusMatrix(
   Q(2,0) =  q[1]; Q(2,1) = -q[0]; Q(2,2) =  q[3]; Q(2,3) =  q[2];
   Q(3,0) = -q[0]; Q(3,1) = -q[1]; Q(3,2) = -q[2]; Q(3,3) =  q[3];
   return Q;
+
+  // X 为四元数乘法 *为矩阵乘法
+  // q1 X q2=  Q(q2) * q1
+  //Q^r= [sI-V^ V]
+  //     [-v^T  s]
+  //四元数的右乘矩阵形式，由于q的存储的[a,b,c ,w] 虚部在前，实部在后
 }
 
 } // namespace svo

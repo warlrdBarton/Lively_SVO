@@ -213,7 +213,7 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
     resetAll();
     R_imu_world_ = R_imu_world;
     have_rotation_prior_ = have_rotation_prior;
-    setInitialPose(frame_bundle);
+    setInitialPose(frame_bundle);//set the first bundle pose
     stage_ = Stage::kInitializing;
   }
 

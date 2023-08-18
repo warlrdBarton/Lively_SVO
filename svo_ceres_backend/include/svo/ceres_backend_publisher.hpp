@@ -16,6 +16,8 @@
 
 #include "svo/ceres_backend/map.hpp"
 
+
+//dgz change
 namespace svo
 {
 class CeresBackendPublisher
@@ -43,8 +45,20 @@ public:
     std::lock_guard<std::mutex> lock(mutex_frame_id_);
     last_added_frame_ = bundle_id;
   }
-
+  
+    void addFrame(const BundleId& bundle_id,const Eigen::Vector3d& last_w_g_B)
+  {
+    std::lock_guard<std::mutex> lock(mutex_frame_id_);
+    last_added_frame_ = bundle_id;
+    last_w_g_B_=last_w_g_B;
+  }
+  inline const Eigen::Vector3d& get_last_g() const 
+  {
+    return last_w_g_B_;
+  }
   void publish(const ViNodeState& state, const int64_t timestamp,
+               const int32_t seq);
+  void publish(ViNodeState& state, const int64_t timestamp,
                const int32_t seq);
 
 private:
@@ -55,6 +69,7 @@ private:
   std::shared_ptr<ceres_backend::Map> map_ptr_;  ///< The underlying svo::Map.
 
   // Transform used for tracing
+  Eigen::Vector3d last_w_g_B_;
   ViNodeState state_;
   BundleId state_frame_id_ = -1;
   BundleId last_added_frame_ = -1;
@@ -63,11 +78,18 @@ private:
   ros::Publisher pub_imu_pose_;
   ros::Publisher pub_imu_pose_viz_;
   ros::Publisher pub_points_;
+  ros::Publisher pub_twist_; 
+
 
   // publisher functions
   void publishImuPose(const ViNodeState& state, const int64_t timestamp,
                       const int32_t seq);
   void publishBackendLandmarks(const int64_t timestamp) const;
+
+
+  void publishImuTwist(ViNodeState& state,
+                                           const int64_t timestamp,
+                                           const int32_t seq);
 };
 
 }  // namespace svo

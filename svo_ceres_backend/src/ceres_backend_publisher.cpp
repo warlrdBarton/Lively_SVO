@@ -38,15 +38,46 @@ CeresBackendPublisher::CeresBackendPublisher(
       pnh_.advertise<geometry_msgs::PoseStamped>("backend_pose_imu_viz", 10);
   pub_points_ =
       pnh_.advertise<PointCloud>("backend_points", 10);
+  pub_twist_ = pnh_.advertise<geometry_msgs::TwistStamped>("twist_imu",10);
 }
 
-void CeresBackendPublisher::publish(const ViNodeState& state,
+void CeresBackendPublisher::publish(ViNodeState& state,
                                     const int64_t timestamp,
                                     const int32_t seq)
 {
   publishImuPose(state, timestamp, seq);
+  publishImuTwist(state, timestamp, seq);
   publishBackendLandmarks(timestamp);
 }
+
+//dgz change
+void CeresBackendPublisher::publishImuTwist(ViNodeState& state,
+                                           const int64_t timestamp,
+                                           const int32_t seq)
+{
+  size_t n_twist_sub=pub_twist_.getNumSubscribers();
+  if(n_twist_sub<1)return;
+    ros::Time time = ros::Time().fromNSec(timestamp);
+    geometry_msgs::TwistStamped::Ptr msg_twist(new geometry_msgs::TwistStamped);
+    Eigen::Vector3d W_v_B,W_g_B; 
+    W_v_B=state.get_W_v_B();
+    state.set_W_g_B(get_last_g());
+    W_g_B=state.get_W_g_B();
+    msg_twist->header.seq = seq;
+    msg_twist->header.stamp = time;
+    msg_twist->header.frame_id = kWorldFrame;
+   
+   msg_twist->twist.linear.x = W_v_B.x();
+   msg_twist->twist.linear.y = W_v_B.y();
+   msg_twist->twist.linear.z = W_v_B.z();
+   
+   msg_twist->twist.angular.x = W_g_B.x();
+   msg_twist->twist.angular.y = W_g_B.y();
+   msg_twist->twist.angular.z = W_g_B.z();
+   pub_twist_.publish(msg_twist);
+  VLOG(100) << "Publish twist Pose";
+}
+
 
 void CeresBackendPublisher::publishImuPose(const ViNodeState& state,
                                            const int64_t timestamp,

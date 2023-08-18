@@ -95,13 +95,21 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
     motion_detector_->setFrames(last_frames, new_frames);
   }
 
+  //Add grua
+#ifdef PUB_TWIST
+  ImuMeasurement last_g;
+  if(imu_handler_->getClosestMeasurement(new_frames->getMinTimestampSeconds(),last_g)){
+     last_g.timestamp_ = new_frames->getMinTimestampSeconds();
+   }
+#endif
+
   // Adding new state to backend ---------------------------------------------
   if (addStatesAndInertialMeasurementsToBackend(new_frames))
   {
     last_added_nframe_imu_ = new_frames->getBundleId();
 
     // Obtain motion prior ---------------------------------------------------
-    updateBundleStateWithBackend(new_frames, true);
+    updateBundleStateWithBackend(new_frames, true);//why no solve but get new transform
     have_motion_prior = true;
   }
   else
@@ -192,7 +200,11 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
     imu_handler_->setAccelerometerBias(speed_and_bias.tail<3>());
     imu_handler_->setGyroscopeBias(speed_and_bias.segment<3>(3));
 
+#ifdef PUB_TWIST    
+    publisher_->addFrame(last_added_nframe_imu_,last_g.angular_velocity_);
+#else
     publisher_->addFrame(last_added_nframe_imu_);
+#endif
   }
 
   // shift state
@@ -722,7 +734,7 @@ void CeresBackendInterface::optimizationLoop()
       last_state_.set_W_v_B(speed_and_bias.head<3>());
       last_state_.setAccBias(speed_and_bias.tail<3>());
       last_state_.setGyroBias(speed_and_bias.segment<3>(3));
-
+      
       // publish current estimation
       if (publisher_)
       {

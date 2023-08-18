@@ -428,6 +428,20 @@ void setInitialPose(const ros::NodeHandle& pnh, FrameHandlerBase& vo)
   vo.setInitialImuPose(T_world_imuinit);
 }
 
+// void setInitialPose( FrameHandlerBase& vo,const Vector3d& g_world_imu)
+// {
+//   Eigen::Vector3d cross_product = g_world_imu.cross(Eigen::Vector3d(0,0,-1)).normalize();
+//   // use cross_product to rotate vector and compute angle
+//   double angle=Eigen::acos(g_world_imu.z()/g_world_imu.norm());
+//   Eigen::AngleAxisd angle_axis(angle, cross_product);
+//   Eigen::Quaterniond quaternion = angle_axis.toQuaternion();
+  
+//   double angle =Eigen::atan2(cross_product,);
+//   Transformation T_world_imuinit(
+//         quaternion,
+//         Vector3d(0,0,0));
+//   vo.setInitialImuPose(T_world_imuinit);
+// }
 
 FrameHandlerMono::Ptr makeMono(const ros::NodeHandle& pnh, const CameraBundlePtr& cam)
 {
