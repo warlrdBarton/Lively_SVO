@@ -213,7 +213,7 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
     resetAll();
     R_imu_world_ = R_imu_world;
     have_rotation_prior_ = have_rotation_prior;
-    setInitialPose(frame_bundle);//set the first bundle pose
+    setInitialPose(frame_bundle);//set the first bundle pose 
     stage_ = Stage::kInitializing;
   }
 
@@ -280,13 +280,13 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
 
     bundle_adjustment_->loadMapFromBundleAdjustment(new_frames_,
                                                     last_frames_, map_,
-                                                    have_motion_prior_);
+                                                    have_motion_prior_);//update the last_frames_ and add new bundle state to ba
 
     if (bundle_adjustment_->getNumFrames() > 0 && have_motion_prior_)
     {
       bundle_adjustment_->getLatestSpeedBiasPose(
             &speed_bias_backend_latest_, &T_WS_backend_latest_,
-            &timestamp_backend_latest_);
+            &timestamp_backend_latest_);//get new speedbiaspose after preintegrate
       backend_reinit_ = false;
     }
 
@@ -294,7 +294,7 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
     //Analyze scale change
     if (map_->size() > 2)
     {
-      opt_dist_first_two_kfs = distanceFirstTwoKeyframes(*map_);
+      opt_dist_first_two_kfs = distanceFirstTwoKeyframes(*map_);last frame and last last frame distance
       const double scale_change =
           opt_dist_first_two_kfs / svo_dist_first_two_kfs - 1.0;
       if (std::abs(scale_change) < options_.backend_scale_stable_thresh)
@@ -511,7 +511,7 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
       VLOG(2) << "Relocalization failed "
               << options_.relocalization_max_trials << " times: RESET.";
       set_reset_ = true;
-      backend_reinit_ = true;
+      backend_reinit_ = true;// the only path to reinit stage
 
     }
 
@@ -560,6 +560,8 @@ void FrameHandlerBase::setRotationPrior(const Quaternion& R_imu_world)
   have_rotation_prior_ = true;
 }
 
+/// @brief through r_lastimu_newimu  and r_imulast_world get current r_imu_world
+/// @param R_lastimu_newimu 
 void FrameHandlerBase::setRotationIncrementPrior(const Quaternion& R_lastimu_newimu)
 {
   VLOG(40) << "Set rotation increment prior.";
@@ -567,7 +569,7 @@ void FrameHandlerBase::setRotationIncrementPrior(const Quaternion& R_lastimu_new
   have_rotation_prior_ = true;
 }
 
-//------------------------------------------------------------------------------
+/// @brief set camera init pose if have rotationprior ,use gtavity init the r_imu_pose and r_cam_pose
 void FrameHandlerBase::setInitialPose(const FrameBundlePtr& frame_bundle) const
 {
   if (have_rotation_prior_)
@@ -580,6 +582,7 @@ void FrameHandlerBase::setInitialPose(const FrameBundlePtr& frame_bundle) const
   }
   else if (frame_bundle->imu_measurements_.cols() > 0)
   {
+    //dgz todo  gtavity setting the　Ｒ_imu_world
     VLOG(40) << "Set initial pose: Use inertial measurements in frame to get gravity.";
     const Vector3d g = frame_bundle->imu_measurements_.topRows<3>().rowwise().sum();
     const Vector3d z = g.normalized(); // imu measures positive-z when static
@@ -661,7 +664,7 @@ size_t FrameHandlerBase::projectMapInFrame()
     map_->getClosestNKeyframesWithOverlap(
           new_frames_->at(camera_idx),
           cur_reprojector->options_.max_n_kfs,
-          &overlap_kfs_.at(camera_idx));
+          &overlap_kfs_.at(camera_idx));//get nth close frame  
 #ifdef SVO_GLOBAL_MAP
     if (!isInRecovery() &&
         cur_reprojector->options_.use_kfs_from_global_map && global_map_)

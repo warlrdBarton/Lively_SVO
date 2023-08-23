@@ -139,7 +139,7 @@ void Map::getClosestNKeyframesWithOverlap(
 {
   CHECK_NOTNULL(close_kfs);
   std::vector<std::pair<FramePtr, double>> overlap_kfs;
-  getOverlapKeyframes(cur_frame, &overlap_kfs);
+  getOverlapKeyframes(cur_frame, &overlap_kfs);//get overlap kf in all kflist
   if(overlap_kfs.empty())
     return;
 

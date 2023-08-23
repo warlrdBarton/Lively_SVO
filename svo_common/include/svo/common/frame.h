@@ -344,9 +344,9 @@ public:
       const Eigen::Vector3d& p_in_imu,
       Eigen::Matrix<double,2,6>& J)
   {
-    Eigen::Matrix<double,3,6> G_x; // Generators times pose
+    Eigen::Matrix<double,3,6> G_x; // Generators times pose  d(p_in_cam)/d(deata pose)
     G_x.block<3,3>(0,0) = Eigen::Matrix3d::Identity();
-    G_x.block<3,3>(0,3) = -vk::skew(p_in_imu);
+    G_x.block<3,3>(0,3) = -vk::skew(p_in_imu);// 
     const Eigen::Vector3d p_in_cam = T_cam_imu * p_in_imu;
 
     Eigen::Matrix<double,2,3> J_proj; // projection derivative
@@ -378,7 +378,7 @@ public:
   {
     Eigen::Matrix<double,3,6> G_x;
     G_x.block<3,3>(0,0) = Eigen::Matrix3d::Identity();
-    G_x.block<3,3>(0,3) = -vk::skew(p_in_imu);
+    G_x.block<3,3>(0,3) = -vk::skew(p_in_imu);//Skew-symmetric Matrix
     const Eigen::Vector3d p_in_cam = T_cam_imu * p_in_imu;
 
     Eigen::Matrix<double, 3, 3> J_normalize;

@@ -75,9 +75,11 @@ CeresBackendInterface::~CeresBackendInterface()
   }
 }
 
-// Get a motion prior for new_frames and update the frontend map and last_frames
-// (note that map is not used, but actually all keyframes in map are updated
-//  in call to updateActiveKeyframes() )
+/// @brief Get a motion prior for new_frames and update the frontend map and last_frames (note that map is not used, but actually all keyframes in map are updated in call to updateActiveKeyframes() )
+/// @param new_frames[out]
+/// @param last_frames[out]
+/// @param map[out]
+/// @param have_motion_prior[in] 
 void CeresBackendInterface::loadMapFromBundleAdjustment(
     const FrameBundlePtr& new_frames, const FrameBundlePtr& last_frames,
     const Map::Ptr& map, bool& have_motion_prior)
@@ -95,7 +97,7 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
     motion_detector_->setFrames(last_frames, new_frames);
   }
 
-  //Add grua
+  //Add weish angle velocity
 #ifdef PUB_TWIST
   ImuMeasurement last_g;
   if(imu_handler_->getClosestMeasurement(new_frames->getMinTimestampSeconds(),last_g)){
@@ -104,12 +106,12 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
 #endif
 
   // Adding new state to backend ---------------------------------------------
-  if (addStatesAndInertialMeasurementsToBackend(new_frames))
+  if (addStatesAndInertialMeasurementsToBackend(new_frames))//cause the imu measurement preintegrate 
   {
     last_added_nframe_imu_ = new_frames->getBundleId();
 
     // Obtain motion prior ---------------------------------------------------
-    updateBundleStateWithBackend(new_frames, true);//why no solve but get new transform
+    updateBundleStateWithBackend(new_frames, true);//use preintegrate to update
     have_motion_prior = true;
   }
   else
@@ -220,6 +222,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
   }
 
   // check for case when IMU measurements could not be added.
+  // last_added_nframe_imu_ changed in loadmapfrombackend
   if (last_added_nframe_imu_ == last_added_nframe_images_)
   {
     return;
@@ -229,7 +232,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
    last_frame_ = frame_bundle->at(0);
    */
 
-  std::lock_guard<std::mutex> lock(mutex_backend_);
+  std::lock_guard<std::mutex> lock(0.00);
 
   vk::Timer timer;
   timer.start();
@@ -266,7 +269,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
     }
   }
 
-  // only use imu-based motion detection when the images are not good
+  // only use imu-based motion detection when threlative_extrinsics_erroe images are not good
   if (!image_motion_detector_stationary_ && imu_motion_detector_stationary_)
   {
     VLOG(5) << "IMU determined stationary, adding prior at time "
@@ -336,7 +339,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
             << Point::global_map_value_version_ << std::endl;
     global_landmark_value_version_ = Point::global_map_value_version_;
   }
-
+  
   last_added_nframe_images_ = frame_bundle->getBundleId();
   last_added_frame_stamp_ns_ = frame_bundle->getMinTimestampNanoseconds();
   if (g_permon_backend_)
@@ -451,7 +454,7 @@ void CeresBackendInterface::addLandmarksAndObservationsToBackend(
             [](const std::pair<size_t, size_t>& p1,
                const std::pair<size_t, size_t>& p2) {
               return p1.second > p2.second;
-            });
+            });//sort the landmarks base which landmark is most observate
 
   size_t n_added_fixed_lm = 0;
   for (size_t idx = 0; idx < kp_idx_to_n_obs_map_fixed_lm.size(); idx++)
@@ -481,7 +484,7 @@ void CeresBackendInterface::addLandmarksAndObservationsToBackend(
           << n_skipped_not_corner;
 }
 
-// Introduce a state for the frame_bundle in backend. Add IMU terms.
+/// @brief Introduce a state for the frame_bundle in backend. Add IMU terms.
 bool CeresBackendInterface::addStatesAndInertialMeasurementsToBackend(
     const FrameBundlePtr& frame_bundle)
 {
@@ -631,7 +634,7 @@ void CeresBackendInterface::optimizationLoop()
           backend_.transformMap(
               w_T_correction_to_apply_,
               optimizer_options_.remove_marginalization_term_after_correction_,
-              optimizer_options_.recalculate_imu_terms_after_loop);
+              optimizer_options_.recalculate_imu_terms_after_loop);//use for loop closing
           for (const FramePtr& f : active_keyframes_)
           {
             f->accumulated_w_T_correction_ =
@@ -808,10 +811,12 @@ void CeresBackendInterface::updateActiveKeyframes()
   // NFrames are only marginalized sequentially, delete until ID matches
   while (!active_keyframes_.empty())
   {
+    //cause the activa_keyframe is a deque ,the oldest frame in the queue front
     if (oldest_keyframe_in_backend == active_keyframes_.front()->bundleId())
     {
       return;
     }
+    //if thr active front bundle_id older than oldest bundle id in deque, pop the active front bundle
     VLOG(40) << "Backend: marginalized frame with id "
              << active_keyframes_.front()->id();
     active_keyframes_.pop_front();

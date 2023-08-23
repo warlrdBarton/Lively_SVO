@@ -1,6 +1,6 @@
 #include <svo/common/types.h>
 
-namespace svo\
+namespace svo
 {
 
 struct MotionDetectorOptions

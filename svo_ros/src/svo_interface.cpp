@@ -276,6 +276,8 @@ void SvoInterface::publishResults(
 #endif
 }
 
+/// @brief if dont use backend this func will integrate imu measurement from lasttimestamp to current timestamp and get the  r_imu_world
+/// @param[in] timestamp_nanoseconds current framebundle timestamp
 bool SvoInterface::setImuPrior(const int64_t timestamp_nanoseconds)
 {
   if(svo_->getBundleAdjuster())
@@ -377,7 +379,7 @@ void SvoInterface::stereoCallback(
     ROS_ERROR("cv_bridge exception: %s", e.what());
   }
 
-  if(!setImuPrior(msg0->header.stamp.toNSec()))
+  if(!setImuPrior(msg0->header.stamp.toNSec()))//change the r_imu_world
   {
     VLOG(3) << "Could not align gravity! Attempting again in next iteration.";
     return;

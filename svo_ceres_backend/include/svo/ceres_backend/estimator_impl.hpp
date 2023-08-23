@@ -56,7 +56,7 @@ inline ceres::ResidualBlockId Estimator::addObservation(const FramePtr &frame,
   const int cam_idx = frame->getNFrameIndex();
   // get Landmark ID.
   const BackendId landmark_backend_id = createLandmarkId(
-        frame->track_id_vec_[keypoint_idx]);
+        frame->track_id_vec_[keypoint_idx]);//get the observate landmark backend id ,the track_id_vec Storage that infomation
   DEBUG_CHECK(isLandmarkAdded(landmark_backend_id)) << "landmark not added";
 
   KeypointIdentifier kid(frame, keypoint_idx);

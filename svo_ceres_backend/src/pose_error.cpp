@@ -68,6 +68,7 @@ PoseError::PoseError(const Transformation& measurement,
   information.bottomRightCorner<3, 3>() = Eigen::Matrix3d::Identity() *
                                           1.0 / rotation_variance;
   setInformation(information);
+  
 }
 
 // Set the information.

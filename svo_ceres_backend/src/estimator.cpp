@@ -142,7 +142,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
                           const ImuMeasurements &imu_measurements,
                           const double &timestamp)
 {
-  BackendId nframe_id = createNFrameId(frame_bundle->getBundleId());
+  BackendId nframe_id = createNFrameId(frame_bundle->getBundleId());//in this line add framebundle into backend and signed NFrameID
   VLOG(20) << "Adding state to estimator. Bundle ID: "
            << frame_bundle->getBundleId()
            << " with backend-id: " << std::hex << nframe_id << std::dec
@@ -163,7 +163,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
       int num_used_imu_measurements =
           ceres_backend::ImuError::propagation(
             imu_measurements, imu_parameters_.at(0), T_WS, speed_and_bias,
-            last_timestamp, timestamp);
+            last_timestamp, timestamp);//get the propagation preintegrate,get now imu  T_ws and speedandbias
       CHECK_GT(num_used_imu_measurements, 1)
           << "No imu measurements is used for reinitialization."
              " Something wrong with the IMU bookkeeping.";
@@ -185,10 +185,10 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
   }
   else
   {
-    last_timestamp = states_.timestamps.back();
+    last_timestamp = states_.timestamps.back();//this states_.back() is previous states
     // get the previous states
-    BackendId T_WS_id = states_.ids.back();
-    BackendId speed_and_bias_id = changeIdType(T_WS_id, IdType::ImuStates);
+    BackendId T_WS_id = states_.ids.back();//frameID and imustatu use same id export typeid
+    BackendId speed_and_bias_id = changeIdType(T_WS_id, IdType::ImuStates);//four type frame landmark imustatus Extrinsics
     T_WS =
         std::static_pointer_cast<ceres_backend::PoseParameterBlock>(
           map_ptr_->parameterBlockPtr(T_WS_id.asInteger()))->estimate();
@@ -201,7 +201,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
     int num_used_imu_measurements =
         ceres_backend::ImuError::propagation(
           imu_measurements, imu_parameters_.at(0), T_WS, speed_and_bias,
-          last_timestamp, timestamp, nullptr, nullptr);//积分后的值
+          last_timestamp, timestamp, nullptr, nullptr);// after imu measurement integrate
     T_WS.getRotation().normalize();
     //! @todo could check this sooner if we select IMU measurements as we do
 //    DEBUG_CHECK(num_used_imu_measurements > 1) << "propagation failed";
@@ -224,7 +224,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
   {
     return false;
   }
-  states_.addState(nframe_id, false, timestamp);
+  states_.addState(nframe_id, false, timestamp);// because the pose_block container two status bundleid ,so just adding single status is ok
   // add IMU states
   for (size_t i=0; i<imu_parameters_.size(); ++i)
   {
@@ -237,7 +237,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
     {
       return false;
     }
-  }
+  }//add the pose and the imu status parameter 
 
   // Now we deal with error terms
   CHECK_GE(states_.ids.size(), 1u);

@@ -149,6 +149,7 @@ bool PoseLocalParameterization::minus(const double* x,
 }
 
 // The jacobian of Plus(x, delta) w.r.t delta at delta = 0.
+// the param is 6 dims,but the error is 7dims
 bool PoseLocalParameterization::plusJacobian(const double* x,
                                              double* jacobian)
 {
@@ -160,7 +161,7 @@ bool PoseLocalParameterization::plusJacobian(const double* x,
 
   // Rotation:
   // exp(dalpha) x q \approx [dalpha/2; 1] x q
-  // \approx ([0 0 0 1]^T + 0.5 * I_3x4 * dalpha) x q
+  // \approx ([0 0 0 1]^T + 0.5 * I_4x3 * dalpha) x q
   // \approx oplus(q) * ([0 0 0 1]^T + 0.5 * I_4x3 * dalpha)
   // => derivative wrt dalpha = oplus(q) * 0.5 * I_4x3
   Eigen::Map<const Eigen::Quaterniond> q(&x[3]);

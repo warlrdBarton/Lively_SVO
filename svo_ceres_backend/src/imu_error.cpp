@@ -336,7 +336,7 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
   int num_propagated = 0;
 
   double time = t_start_adjusted;
-  for (size_t i = imu_measurements.size()-1; i!=0u; --i)
+  for (size_t i = imu_measurements.size()-1; i!=0u; --i)//newest in front , oldest in end
   {
     Eigen::Vector3d omega_S_0 = imu_measurements[i].angular_velocity_;
     Eigen::Vector3d acc_S_0 = imu_measurements[i].linear_acceleration_;
@@ -345,9 +345,9 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
     double nexttime = imu_measurements[i - 1].timestamp_;
 
     // time delta
-    double dt = nexttime - time;
+    double dt = nexttime - time;//计算两幀之间的变化时间
 
-    if (t_end_adjusted < nexttime)
+    if (t_end_adjusted < nexttime)// compute the last timestamp to 
     {
       double interval = nexttime - imu_measurements[i].timestamp_;
       nexttime = t_end_adjusted;

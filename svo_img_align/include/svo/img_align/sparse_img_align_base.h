@@ -56,7 +56,8 @@ struct SparseImgAlignState
 };
 
 /// Optimize the pose of the frame by minimizing the photometric error of feature patches.
-class SparseImgAlignBase : public vk::solver::MiniLeastSquaresSolver<8, SparseImgAlignState, SparseImgAlignBase>
+class SparseImgAlignBase : 
+public vk::solver::MiniLeastSquaresSolver<8, SparseImgAlignState, SparseImgAlignBase>
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

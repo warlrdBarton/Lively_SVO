@@ -113,7 +113,7 @@ void MiniLeastSquaresSolver<D, T, Implementation>::optimizeLevenbergMarquardt(St
   mu_ = solver_options_.mu_init;
   nu_ = solver_options_.nu_init;
 
-  // compute the initial error
+  // compute the initali error
   chi2_ = evaluateError(state, nullptr, nullptr);
   VLOG(400) << "init chi2 = " << chi2_
           << "\t n_meas = " << n_meas_;
