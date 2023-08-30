@@ -163,7 +163,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
       int num_used_imu_measurements =
           ceres_backend::ImuError::propagation(
             imu_measurements, imu_parameters_.at(0), T_WS, speed_and_bias,
-            last_timestamp, timestamp);//get the propagation preintegrate,get now imu  T_ws and speedandbias
+            last_timestamp, timestamp);//get the propagation integrate,get now imu  T_ws and speedandbias
       CHECK_GT(num_used_imu_measurements, 1)
           << "No imu measurements is used for reinitialization."
              " Something wrong with the IMU bookkeeping.";

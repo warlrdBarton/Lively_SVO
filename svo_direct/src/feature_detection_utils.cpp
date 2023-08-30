@@ -141,6 +141,8 @@ void fillFeatures(const Corners& corners,
   }
 }
 
+
+
 //------------------------------------------------------------------------------
 void fastDetector(
     const ImgPyr& img_pyr,

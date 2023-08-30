@@ -86,9 +86,9 @@ int ImuError::redoPreintegration(const Transformation& /*T_WS*/,
   }
 
   // increments (initialise with identity)
-  Delta_q_ = Eigen::Quaterniond(1, 0, 0, 0);
-  C_integral_ = Eigen::Matrix3d::Zero();
-  C_doubleintegral_ = Eigen::Matrix3d::Zero();
+  Delta_q_ = Eigen::Quaterniond(1, 0, 0, 0);//accumulate q 
+  C_integral_ = Eigen::Matrix3d::Zero();// the rotate matrix integral
+  C_doubleintegral_ = Eigen::Matrix3d::Zero();//the rotate matrix double integral
   acc_integral_ = Eigen::Vector3d::Zero();
   acc_doubleintegral_ = Eigen::Vector3d::Zero();
 
@@ -196,6 +196,7 @@ int ImuError::redoPreintegration(const Transformation& /*T_WS*/,
     acc_doubleintegral_ +=
         acc_integral_ * dt + 0.25 * (C + C_1) * acc_S_true * dt * dt;
 
+    //expmapDerivativeSO3: rotate vector to rotate matrix
     // Jacobian parts
     dalpha_db_g_ += C_1 * expmapDerivativeSO3(omega_S_true * dt) * dt;
     const Eigen::Matrix3d cross_1 =
@@ -206,9 +207,9 @@ int ImuError::redoPreintegration(const Transformation& /*T_WS*/,
         dv_db_g_ + 0.5 * dt * (C * acc_S_x * cross_ + C_1 * acc_S_x * cross_1);
     dp_db_g_ +=
         dt * dv_db_g_
-        + 0.25 * dt * dt * (C * acc_S_x * cross_ + C_1 * acc_S_x * cross_1);
+        + 0.25 * dt * dt * (C * acc_S_x * cross_ + C_1 * acc_S_x * cross_1);//accumulate the jacobian matrix
 
-    // covariance propagation
+    // covariance propagation 
     Eigen::Matrix<double, 15, 15> F_delta =
         Eigen::Matrix<double, 15, 15>::Identity();
     // transform
@@ -290,12 +291,12 @@ int ImuError::redoPreintegration(const Transformation& /*T_WS*/,
 
 // Propagates pose, speeds and biases with given IMU measurements.
 int ImuError::propagation(const ImuMeasurements& imu_measurements,
-                          const ImuParameters& imu_params,
+                          const ImuParameters& imu_params,//storage the imuparameters like sigma_a_c
                           Transformation& T_WS,
                           SpeedAndBias & speed_and_biases,
                           const double& t_start,
                           const double& t_end,
-                          covariance_t* covariance,
+                          covariance_t* covariance,//default =null
                           jacobian_t* jacobian)
 {
   const double t_start_adjusted = t_start - imu_params.delay_imu_cam;
@@ -329,7 +330,7 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
   Eigen::Matrix3d dp_db_g = Eigen::Matrix3d::Zero();
 
   // the Jacobian of the increment (w/o biases)
-  Eigen::Matrix<double,15,15> P_delta = Eigen::Matrix<double,15,15>::Zero();
+  Eigen::Matrix<double,15,15> P_delta = Eigen::Matrix<double,15,15>::Zero();//P matrix
 
   double Delta_t = 0;
   bool has_started = false;
@@ -342,10 +343,10 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
     Eigen::Vector3d acc_S_0 = imu_measurements[i].linear_acceleration_;
     Eigen::Vector3d omega_S_1 = imu_measurements[i-1].angular_velocity_;
     Eigen::Vector3d acc_S_1 = imu_measurements[i-1].linear_acceleration_;
-    double nexttime = imu_measurements[i - 1].timestamp_;
+    double nexttime = imu_measurements[i - 1].timestamp_;//get mediam measurement
 
     // time delta
-    double dt = nexttime - time;//计算两幀之间的变化时间
+    double dt = nexttime - time;//the change time bewteen two imu frame
 
     if (t_end_adjusted < nexttime)// compute the last timestamp to 
     {
@@ -361,7 +362,7 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
     {
       continue;
     }
-    Delta_t += dt;
+    Delta_t += dt;//the accumulate time
 
     if (!has_started)
     {
@@ -401,16 +402,16 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
     // orientation:
     Eigen::Quaterniond dq;
     const Eigen::Vector3d omega_S_true =
-        (0.5 *(omega_S_0+omega_S_1) - speed_and_biases.segment<3>(3));
-    const double theta_half = omega_S_true.norm() * 0.5 * dt;
+        (0.5 *(omega_S_0+omega_S_1) - speed_and_biases.segment<3>(3));// - the omega_b
+    const double theta_half = omega_S_true.norm() * 0.5 * dt;// theta
     const double sinc_theta_half = sinc(theta_half);
     const double cos_theta_half = cos(theta_half);
-    dq.vec() = sinc_theta_half * omega_S_true * 0.5 * dt;
-    dq.w() = cos_theta_half;
+    dq.vec() = sinc_theta_half * omega_S_true * 0.5 * dt;// approx 1/2*w*dt
+    dq.w() = cos_theta_half;//cos(theta/2)
     Eigen::Quaterniond Delta_q_1 = Delta_q * dq;
     // rotation matrix integral:
-    const Eigen::Matrix3d C = Delta_q.toRotationMatrix();
-    const Eigen::Matrix3d C_1 = Delta_q_1.toRotationMatrix();
+    const Eigen::Matrix3d C = Delta_q.toRotationMatrix();//the rotate matrix before perlurbation
+    const Eigen::Matrix3d C_1 = Delta_q_1.toRotationMatrix();//the rotate matrix after perlurbation
     const Eigen::Vector3d acc_S_true =
         (0.5 * (acc_S_0 + acc_S_1) - speed_and_biases.segment<3>(6));
     const Eigen::Matrix3d C_integral_1 = C_integral + 0.5 *(C + C_1) * dt;
@@ -588,6 +589,8 @@ bool ImuError::EvaluateWithMinimalJacobians(double const* const * parameters,
   if (redo_)
   {
     redoPreintegration(T_WS_0, speed_and_biases_0);
+    //compute the redopreintegration and computer covariance propagation
+    //compute the dalpha_db_g dv_db_g dp_db_g
     redoCounter_++;
     Delta_b.setZero();
     redo_ = false;
@@ -613,7 +616,7 @@ bool ImuError::EvaluateWithMinimalJacobians(double const* const * parameters,
     const Eigen::Quaterniond Dq =
         deltaQ(-dalpha_db_g_*Delta_b.head<3>())*Delta_q_;
     F0.block<3,3>(0,0) = C_S0_W;
-    F0.block<3,3>(0,3) = C_S0_W * skewSymmetric(delta_p_est_W);
+    F0.block<3,3>(0,3) = C_S0_W * skewSymmetric(delta_p_est_W);//p2r
     F0.block<3,3>(0,6) = C_S0_W * Eigen::Matrix3d::Identity()* delta_t;
     F0.block<3,3>(0,9) = dp_db_g_;
     F0.block<3,3>(0,12) = -C_doubleintegral_;
@@ -643,7 +646,7 @@ bool ImuError::EvaluateWithMinimalJacobians(double const* const * parameters,
     // the overall error vector
     Eigen::Matrix<double, 15, 1> error;
     error.segment<3>(0) =
-        C_S0_W * delta_p_est_W + acc_doubleintegral_ + F0.block<3,6>(0,9)*Delta_b;
+        C_S0_W * delta_p_est_W + acc_doubleintegral_ + F0.block<3,6>(0,9)*Delta_b;//compute the error and add the 
     error.segment<3>(3) =
         2.0 * (Dq * (T_WS_1.getEigenQuaternion().inverse() *
                      T_WS_0.getEigenQuaternion())).vec();

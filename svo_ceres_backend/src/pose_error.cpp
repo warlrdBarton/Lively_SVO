@@ -68,7 +68,7 @@ PoseError::PoseError(const Transformation& measurement,
   information.bottomRightCorner<3, 3>() = Eigen::Matrix3d::Identity() *
                                           1.0 / rotation_variance;
   setInformation(information);
-  
+
 }
 
 // Set the information.
@@ -101,7 +101,7 @@ bool PoseError::EvaluateWithMinimalJacobians(double const* const * parameters,
       Eigen::Quaterniond(parameters[0][6], parameters[0][3], parameters[0][4],
                          parameters[0][5]));
   // delta pose
-  Transformation dp = measurement_ * T_WS.inverse();
+  Transformation dp = measurement_ * T_WS.inverse();//the t_ws is pre integrate and measurement is frontend 
   // get the error
   Eigen::Matrix<double, 6, 1> error;
   const Eigen::Vector3d dtheta = 2 * dp.getRotation().imaginary();

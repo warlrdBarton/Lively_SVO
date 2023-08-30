@@ -190,6 +190,7 @@ void SvoInterface::publishResults(
       covariance.setZero();
       visualizer_->publishImuPose(
             svo_->getLastFrames()->get_T_W_B(), covariance, timestamp_nanoseconds);
+      visualizer_->visualizeGravity(svo_->getLastFrames(), timestamp_nanoseconds,imu_handler_->imu_calib_.gravity_magnitude);
       visualizer_->publishCameraPoses(svo_->getLastFrames(), timestamp_nanoseconds);
       visualizer_->visualizeMarkers(
             svo_->getLastFrames(), svo_->closeKeyframes(), svo_->map());

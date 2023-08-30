@@ -267,6 +267,7 @@ bool ImuHandler::getClosestMeasurement(
   return true;
 }
 
+//return the rotate prior from old cam timestamp to new cam timestamp
 bool ImuHandler::getRelativeRotationPrior(
     const double old_cam_timestamp,
     const double new_cam_timestamp,

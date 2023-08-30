@@ -88,6 +88,10 @@ public:
   bool trace_pointcloud_;
   double vis_scale_;
   std::ofstream ofs_pointcloud_;
+#ifdef PUB_GRAVITY
+  ros::Publisher pub_gravity_;
+#endif
+
 
 #ifdef SVO_LOOP_CLOSING
   PointCloud pose_graph_map_;
@@ -152,6 +156,10 @@ public:
   void visualizeMarkers(const FrameBundlePtr& frame_bundle,
                         const std::vector<FramePtr>& close_kfs,
                         const MapPtr& map);
+#ifdef PUB_GRAVITY
+  void visualizeGravity(const FrameBundlePtr& frame_bundle,
+                        const uint64_t timestamp,const double & g_w);
+#endif
 
   void publishTrajectoryPoint(const Eigen::Vector3d& pos_in_vision,
                               const uint64_t timestamp, const int id);

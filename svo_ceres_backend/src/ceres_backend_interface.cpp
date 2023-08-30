@@ -232,7 +232,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
    last_frame_ = frame_bundle->at(0);
    */
 
-  std::lock_guard<std::mutex> lock(0.00);
+  std::lock_guard<std::mutex> lock(mutex_backend_);
 
   vk::Timer timer;
   timer.start();

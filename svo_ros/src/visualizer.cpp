@@ -179,6 +179,9 @@ Visualizer::Visualizer(const std::string& trace_dir,
   pub_info_ = pnh_.advertise<svo_msgs::Info>("info", 10);
   pub_markers_ = pnh_.advertise<visualization_msgs::Marker>("markers", 100);
   pub_pc_ = pnh_.advertise<sensor_msgs::PointCloud2>("pointcloud", 1);
+#ifdef PUB_GRAVITY
+  pub_gravity_ = pnh_.advertise<visualization_msgs::Marker>("gravity", 10);
+#endif
   pub_dense_.resize(n_cameras);
   pub_images_.resize(n_cameras);
   pub_cam_poses_.resize(n_cameras);
@@ -437,6 +440,42 @@ void Visualizer::visualizeHexacopter(const Transformation& T_frame_world,
                                            0, 0.8, Vector3d(0., 0., 1.));
   }
 }
+
+#ifdef PUB_GRAVITY
+void Visualizer::visualizeGravity(const FrameBundlePtr& frame_bundle,
+                        const uint64_t timestamp,const double & g_w)
+{
+
+  if (pub_gravity_.getNumSubscribers() > 0)
+  {
+    Eigen::Vector3d p_b = frame_bundle->get_T_W_B().getPosition();
+    // Eigen::Vector3d g_b_ = T_f_w.transform(Eigen::Vector3d(0., 0., g_w));
+    visualization_msgs::Marker gravity_marker;
+    gravity_marker.header.frame_id = "world";
+    gravity_marker.header.stamp = ros::Time().fromNSec(timestamp);
+    gravity_marker.header.seq = trace_id_;
+    gravity_marker.type = visualization_msgs::Marker::ARROW;
+    gravity_marker.action = visualization_msgs::Marker::ADD;
+    gravity_marker.pose.position.x = p_b[0];
+    gravity_marker.pose.position.y = p_b[1];
+    gravity_marker.pose.position.z = p_b[2];
+    gravity_marker.pose.orientation.x = 0;
+    gravity_marker.pose.orientation.y = 1;
+    gravity_marker.pose.orientation.z = 0.0;
+    gravity_marker.pose.orientation.w = 1;
+    
+    gravity_marker.scale.x = 0.5;
+    gravity_marker.scale.y = 0.05;
+    gravity_marker.scale.z = 0.05;
+  
+    gravity_marker.color.a = 1.0;
+    gravity_marker.color.r = 0.0;
+    gravity_marker.color.g = 1.0;
+    gravity_marker.color.b = 0.0;
+    pub_gravity_.publish(gravity_marker);
+  }
+}
+#endif
 
 void Visualizer::visualizeQuadrocopter(const Transformation& T_frame_world,
                                        const uint64_t timestamp)

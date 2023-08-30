@@ -294,7 +294,7 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
     //Analyze scale change
     if (map_->size() > 2)
     {
-      opt_dist_first_two_kfs = distanceFirstTwoKeyframes(*map_);last frame and last last frame distance
+      opt_dist_first_two_kfs = distanceFirstTwoKeyframes(*map_);//last frame and last last frame distance
       const double scale_change =
           opt_dist_first_two_kfs / svo_dist_first_two_kfs - 1.0;
       if (std::abs(scale_change) < options_.backend_scale_stable_thresh)

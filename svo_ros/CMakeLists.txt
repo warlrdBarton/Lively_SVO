@@ -8,6 +8,11 @@ find_package(rostest REQUIRED)
 catkin_simple()
 find_package(OpenCV REQUIRED)
 
+
+
+
+add_definitions(-DPUB_GRAVITY)
+
 set(USE_GTSAM false)
 include(SvoSetup)
 if(USE_GLOBAL_MAP OR USE_GTSAM)
