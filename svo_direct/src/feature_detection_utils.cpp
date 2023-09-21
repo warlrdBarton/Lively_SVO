@@ -20,7 +20,7 @@
 #include <svo/common/logging.h>
 #include <svo/direct/feature_detection_types.h>
 #include <svo/direct/feature_detection.h>
-
+#include <opencv2/cudafeatures2d.hpp>
 namespace svo {
 namespace feature_detection_utils {
 
@@ -61,6 +61,9 @@ AbstractDetector::Ptr makeDetector(
     break;
   case DetectorType::kSobel:
     detector.reset(new SobelDetector(options, cam));
+    break;
+  case DetectorType::kCudaFastGrad:
+    detector.reset(new CudaFastGradDetector(options, cam));
     break;
   default:
     SVO_ERROR_STREAM("Detector unknown!");
@@ -178,6 +181,7 @@ void fastDetector(
                                fast_corners, threshold, scores);
     fast::fast_nonmax_3x3(fast_corners, scores, nm_corners);
 
+
     const int maxw = img_pyr[level].cols-border;
     const int maxh = img_pyr[level].rows-border;
     for(const int& i : nm_corners)
@@ -194,6 +198,68 @@ void fastDetector(
     }
   }
 }
+
+//------------------------------------------------------------------------------
+void cudaFastDetector(
+    const ImgPyr& img_pyr,
+    const int threshold,
+    const int border,
+    const size_t min_level,
+    const size_t max_level,
+    Corners& corners,
+    OccupandyGrid2D& grid,
+    cv::Ptr<cv::cuda::FastFeatureDetector> detector_ptr
+    )
+{
+  bool upload_=0;
+    CHECK_EQ(corners.size(), grid.occupancy_.size());
+  CHECK_LE(max_level, img_pyr.size()-1);
+  cv::Mat mask;
+  for(size_t level=min_level; level<=max_level; ++level)
+  {
+    const int scale = (1<<level);
+    std::vector<fast::fast_xy> fast_corners;
+    std::vector<cv::KeyPoint> kps;
+    std::vector<int> scores, nm_corners;
+    if(upload_)
+    {
+      cv::cuda::GpuMat img_gpu;
+      cv::cuda::GpuMat mask;
+      img_gpu.upload(img_pyr[level]);
+      detector_ptr->detect(img_gpu,kps,mask);
+    }
+    else{
+      detector_ptr->detect(img_pyr[level],kps,mask);
+    }
+    
+
+
+    fast_corners.resize(kps.size());
+    for(const cv::KeyPoint& kp : kps)
+    {
+      fast_corners.emplace_back(static_cast<short>(kp.pt.x),static_cast<short>(kp.pt.y));
+    }
+    fast::fast_corner_score_10((fast::fast_byte*) img_pyr[level].data, img_pyr[level].step,
+                               fast_corners, threshold, scores);
+    fast::fast_nonmax_3x3(fast_corners, scores, nm_corners);
+    const int maxw = img_pyr[level].cols-border;
+    const int maxh = img_pyr[level].rows-border;
+    for(const int& i : nm_corners)
+    {
+      fast::fast_xy& xy = fast_corners.at(i);
+      if(xy.x < border || xy.y < border || xy.x >= maxw || xy.y >= maxh)
+        continue;
+      const size_t k = grid.getCellIndex(xy.x, xy.y, scale);
+      if(grid.occupancy_.at(k))
+        continue;
+      const float score = scores.at(i); //vk::shiTomasiScore(img_pyr[L], xy.x, xy.y);
+      if(score > corners.at(k).score)
+        corners.at(k) = Corner(xy.x*scale, xy.y*scale, score, level, 0.0f);
+    }
+  }
+}
+
+
 
 //------------------------------------------------------------------------------
 void shiTomasiDetector(

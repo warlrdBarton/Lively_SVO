@@ -193,6 +193,48 @@ void FastGradDetector::detect(
   resetGrid();
 }
 
+//-----------------------------------------------------------------------------
+void CudaFastGradDetector::detect(
+    const ImgPyr& img_pyr,
+    const cv::Mat& mask,  
+    const size_t max_n_features,
+    Keypoints& px_vec,
+    Scores& score_vec,
+    Levels& level_vec,
+    Gradients& grad_vec,
+    FeatureTypes& types_vec)
+    {
+      {
+    // Detect fast corners.
+    Corners corners(
+          grid_.n_cols*grid_.n_rows,
+          Corner(0, 0, options_.threshold_primary, 0, 0.0f));
+    fd_utils::cudaFastDetector(
+          img_pyr, options_.threshold_primary, options_.border,
+          options_.min_level, options_.max_level, corners, grid_, this->cuda_fast_detector);
+    fd_utils::fillFeatures(
+          corners, FeatureType::kCorner, mask, options_.threshold_primary,
+          max_n_features, px_vec, score_vec, level_vec, grad_vec, types_vec, grid_);
+  }
+
+  int max_features = static_cast<int>(max_n_features) - px_vec.cols();
+  if(max_features > 0)
+  {
+    // Detect edgelets.
+    Corners corners(
+          grid_.n_cols * grid_.n_rows,
+          Corner(0, 0, options_.threshold_secondary, 0, 0.0f));
+    fd_utils::edgeletDetector_V2(
+          img_pyr, options_.threshold_secondary, options_.border,
+          options_.min_level, options_.max_level, corners, grid_);
+    fd_utils::fillFeatures(
+          corners, FeatureType::kEdgelet, mask, options_.threshold_secondary,
+          max_features, px_vec, score_vec, level_vec, grad_vec, types_vec, grid_);
+  }
+
+  resetGrid();
+    }
+
 //------------------------------------------------------------------------------
 void ShiTomasiGradDetector::detect(
     const ImgPyr& img_pyr,

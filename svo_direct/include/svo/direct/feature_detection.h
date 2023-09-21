@@ -12,7 +12,7 @@
 #include <svo/common/camera_fwd.h>
 #include <svo/common/occupancy_grid_2d.h>
 #include <svo/direct/feature_detection_types.h>
-
+#include <opencv2/cudafeatures2d.hpp>
 namespace svo {
 
 //------------------------------------------------------------------------------
@@ -129,6 +129,32 @@ public:
   using AbstractDetector::AbstractDetector; // default constructor
   virtual ~FastGradDetector() = default;
 
+  virtual void detect(
+      const ImgPyr& img_pyr,
+      const cv::Mat& mask,
+      const size_t max_n_features,
+      Keypoints& px_vec,
+      Scores& score_vec,
+      Levels& level_vec,
+      Gradients& grad_vec,
+      FeatureTypes& types_vec) override;
+};
+
+
+//------------------------------------------------------------------------------
+/// @brief the cuda fast detector with gradient detector
+class CudaFastGradDetector : public AbstractDetector
+{
+public:
+  using AbstractDetector::AbstractDetector; // default constructor
+  CudaFastGradDetector(const DetectorOptions& options,
+      const CameraPtr& cam):AbstractDetector(options,cam)
+      {
+      
+    cuda_fast_detector=cv::cuda::FastFeatureDetector::create(options_.threshold_primary,false);
+  }
+  virtual ~CudaFastGradDetector() = default;
+  cv::Ptr<cv::cuda::FastFeatureDetector> cuda_fast_detector;
   virtual void detect(
       const ImgPyr& img_pyr,
       const cv::Mat& mask,

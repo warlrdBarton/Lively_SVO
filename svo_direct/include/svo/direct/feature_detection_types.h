@@ -41,7 +41,8 @@ enum class DetectorType
   kAll,             ///< Every pixel is a feature!
   kGradHuangMumford,///< 'Natural' edges (see Huang CVPR'99)
   kCanny,           ///< Canny edge detector
-  kSobel            ///< Sobel edge detector
+  kSobel,            ///< Sobel edge detector
+  kCudaFastGrad       ///< cuda Combined Fast and Gradient detector
 };
 
 //------------------------------------------------------------------------------

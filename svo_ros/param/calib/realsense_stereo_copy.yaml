@@ -1,0 +1,77 @@
+label: "realsense_d435i"
+id: 412eab8e4058621f7036b5e765dfe812
+cameras:
+- camera:
+    label: cam0
+    id: 54812562fa109c40fe90b29a59dd7798
+    line-delay-nanoseconds: 0
+    image_height: 480
+    image_width: 640
+    type: pinhole
+    intrinsics:
+      cols: 1
+      rows: 4
+      data: [382.34175236928627, 381.95652780834325, 321.7242056112083, 236.24691075834372]
+    distortion:
+      type: equidistant 
+      parameters:
+        cols: 1
+        rows: 4
+        data: [0.32442728089910744, 0.23396382488948425, -0.24223639161959515, 0.185685747064856835]
+  T_B_C:
+    cols: 4
+    rows: 4
+    data: [ 
+             0.99955752, -0.02918324, -0.00575307, -0.00487046,
+             0.02919905 , 0.99957001 , 0.00268382,  0.00750499,
+             0.00567227, -0.00285062,  0.99997985,  0.02189337,
+             0. ,         0.   ,       0.    ,      1.        ]
+- camera:
+    label: cam1
+    id: 54812562fa109c40fe90b29a59dd7723
+    line-delay-nanoseconds: 0
+    image_height: 480
+    image_width: 640
+    type: pinhole
+
+    intrinsics:
+      cols: 1
+      rows: 4
+      data: [382.42319597156416, 382.16185028304426, 322.3064389150983, 236.32505325747246]
+    distortion:
+      type: equidistant
+      parameters:
+        cols: 1
+        rows: 4
+        data: [0.3196992105817953, 0.191014837041737, 0.03541849675788348, -0.10773612747791704]
+  T_B_C:
+    cols: 4
+    rows: 4
+    data: [
+             0.99955825 ,-0.02929294, -0.00502244 , 0.045615  ,
+              0.02930624 , 0.99956711 , 0.00259381 , -0.00910279,
+              0.00494429 ,-0.00273986 , 0.99998402 , 0.02201682,
+               0.       ,   0.       ,   0.  ,        1.        ]
+
+
+imu_params:
+  delay_imu_cam: 0.0
+  max_imu_delta_t: 0.01
+  acc_max: 176.0
+  omega_max: 17
+  sigma_omega_c: 1.7356915473175545e-03
+  sigma_acc_c: 1.2623857018616855e-02
+  sigma_omega_bias_c: 1.3010897230607218e-05
+  sigma_acc_bias_c: 3.2595004354121901e-04
+  sigma_integration: 0.0
+  g: 9.806650
+  imu_rate: 200
+
+imu_initialization:
+  velocity: [0.0, 0, 0.0]
+  omega_bias: [0.0, 0, 0.0]
+  acc_bias: [0.0, 0.0, 0.0]
+  velocity_sigma: 1.0
+  omega_bias_sigma: 1.7356915473175545e-03
+  acc_bias_sigma: 1.2623857018616855e-02
+

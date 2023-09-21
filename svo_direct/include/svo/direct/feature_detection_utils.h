@@ -14,7 +14,7 @@
 #include <svo/common/camera_fwd.h>
 #include <svo/common/occupancy_grid_2d.h>
 #include <svo/direct/feature_detection_types.h>
-
+#include <opencv2/cudafeatures2d.hpp>
 
 namespace svo {
 
@@ -58,6 +58,18 @@ void shiTomasiDetector(
     Corners& corners,
     OccupandyGrid2D& grid,
     OccupandyGrid2D& closeness_check_grid);
+
+void cudaFastDetector(
+    const ImgPyr& img_pyr,
+    const int threshold,
+    const int border,
+    const size_t min_level,
+    const size_t max_level,
+    Corners& corners,
+    OccupandyGrid2D& grid,
+    cv::Ptr<cv::cuda::FastFeatureDetector> detector_ptr
+    );
+
 
 void edgeletDetector_V1(
     const ImgPyr& img_pyr,

@@ -155,8 +155,8 @@ Matcher::MatchResult Matcher::findEpipolarMatchDirect(
 }
 
 Matcher::MatchResult Matcher::findEpipolarMatchDirect(
-    const Frame& ref_frame,
-    const Frame& cur_frame,
+    const Frame& ref_frame,//left
+    const Frame& cur_frame,//right
     const Transformation& T_cur_ref,
     const FeatureWrapper& ref_ftr,
     const double d_estimate_inv,

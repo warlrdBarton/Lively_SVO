@@ -118,6 +118,9 @@ max_depth_inv: 0.05
 min_depth_inv: 1.0
 mean_depth_inv: 0.3
 
+#use cuda
+use_cuda: false
+
 ##############################
 ##### Backend parameters #####
 ##############################

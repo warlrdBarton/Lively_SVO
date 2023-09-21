@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED core imgproc highgui cudafeatures2d)
 
 include(SvoSetup)
 

@@ -21,6 +21,10 @@
 
   </node>
 
+  
+  <node pkg="pc_sense" type="pc_project_ros" name="pcpn">
+    <rosparam file="$(find pc_sense)/param/plane.yaml" />
+  </node>
   <!-- RVIZ -->
   <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config_vio.rviz" />
 
