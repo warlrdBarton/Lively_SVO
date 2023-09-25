@@ -281,6 +281,7 @@ void SvoInterface::publishResults(
 /// @param[in] timestamp_nanoseconds current framebundle timestamp
 bool SvoInterface::setImuPrior(const int64_t timestamp_nanoseconds)
 {
+  // SVO_WARN_STREAM("setImuPrior start delete");
   if(svo_->getBundleAdjuster())
   {
     //if we use backend, this will take care of setting priors
@@ -294,7 +295,7 @@ bool SvoInterface::setImuPrior(const int64_t timestamp_nanoseconds)
     }
     return true;
   }
-
+  SVO_WARN_STREAM("after setIMuPro");
   if(imu_handler_ && !svo_->hasStarted() && set_initial_attitude_from_gravity_)
   {
     // set initial orientation

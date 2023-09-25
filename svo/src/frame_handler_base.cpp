@@ -572,9 +572,10 @@ void FrameHandlerBase::setRotationIncrementPrior(const Quaternion& R_lastimu_new
 /// @brief set camera init pose if have rotationprior ,use gtavity init the r_imu_pose and r_cam_pose
 void FrameHandlerBase::setInitialPose(const FrameBundlePtr& frame_bundle) const
 {
+  LOG(INFO)<<"setInitialPose"<<std::endl;
   if (have_rotation_prior_)
   {
-    VLOG(40) << "Set initial pose: With rotation prior";
+    LOG(INFO) << "Set initial pose: With rotation prior";
     for (size_t i = 0; i < frame_bundle->size(); ++i)
     {
       frame_bundle->at(i)->T_f_w_ = cams_->get_T_C_B(i) * Transformation(R_imu_world_, Vector3d::Zero());
@@ -583,7 +584,7 @@ void FrameHandlerBase::setInitialPose(const FrameBundlePtr& frame_bundle) const
   else if (frame_bundle->imu_measurements_.cols() > 0)
   {
     //dgz todo  gtavity setting the　Ｒ_imu_world
-    VLOG(40) << "Set initial pose: Use inertial measurements in frame to get gravity.";
+    LOG(INFO) << "Set initial pose: Use inertial measurements in frame to get gravity.";
     const Vector3d g = frame_bundle->imu_measurements_.topRows<3>().rowwise().sum();
     const Vector3d z = g.normalized(); // imu measures positive-z when static
     // TODO: make sure z != -1,0,0
@@ -600,11 +601,11 @@ void FrameHandlerBase::setInitialPose(const FrameBundlePtr& frame_bundle) const
     C_imu_world.col(2) = z;
     Transformation T_imu_world(Quaternion(C_imu_world), Eigen::Vector3d::Zero());
     frame_bundle->set_T_W_B(T_imu_world.inverse());
-    VLOG(3) << "Initial Rotation = " << std::endl << C_imu_world.transpose() << std::endl;
+    SVO_INFO_STREAM("SvoNode: Started IMU loop."<<C_imu_world.transpose());
   }
   else
   {
-    VLOG(40) << "Set initial pose: set such that T_imu_world is identity.";
+    LOG(INFO) << "Set initial pose: set such that T_imu_world is identity."<<frame_bundle->imu_measurements_.cols();
     for (size_t i = 0; i < frame_bundle->size(); ++i)
     {
       frame_bundle->at(i)->T_f_w_ = cams_->get_T_C_B(i) * T_world_imuinit.inverse();

@@ -460,12 +460,14 @@ bool ImuHandler::getInitialAttitude(
     double timestamp,
     Quaternion& R_imu_world) const
 {
+  std::cerr<<"\033[0;0m[INFO] SVO: get_Initial_Attitude"<<std::endl;
   ImuMeasurement m;
   if(!getClosestMeasurement(timestamp, m))
   {
-    LOG(WARNING) << "ImuHandler: Could not get initial attitude. No measurements!";
+    LOG(INFO) << "ImuHandler: Could not get initial attitude. No measurements!";
     return false;
   }
+
 
   // Set initial coordinate frame based on gravity direction.
   const Eigen::Vector3d& g = m.linear_acceleration_;
@@ -482,8 +484,7 @@ bool ImuHandler::getInitialAttitude(
   C_imu_world.col(0) = x;
   C_imu_world.col(1) = y;
   C_imu_world.col(2) = z;
-
-  VLOG(3) << "Initial Rotation = " << C_imu_world;
+  std::cerr<<"\033[0;0m[INFO] SVO: "<<"Initial Rotation = " << C_imu_world<<"\033[0;0m"<<std::endl;
 
   R_imu_world = Quaternion(C_imu_world);
   return true;
