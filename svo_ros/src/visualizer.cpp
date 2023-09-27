@@ -18,7 +18,7 @@
 #include <tf/tf.h>
 #include <ros/package.h>
 #include <cv_bridge/cv_bridge.h>
-#include <pcl_conversions/pcl_conversions.h>
+
 
 #include <vikit/timer.h>
 #include <vikit/output_helper.h>
@@ -107,6 +107,36 @@ void publishPositionVecAsPC(
   sensor_msgs::PointCloud2 pc_msg;
   pcl::toROSMsg(pc, pc_msg);
   pub.publish(pc_msg);
+}
+
+
+void publishPositionVecAsPC(
+    pcl_ros::Publisher<svo::Visualizer::PointType>& pub,
+    const std::vector<rpg::PositionVec>& vec_of_position_vec,
+    const std::vector<float>& intensities)
+{
+  CHECK_EQ(vec_of_position_vec.size(), intensities.size());
+
+  pcl::PointCloud<pcl::PointXYZI> pc;
+  pcl_conversions::toPCL(ros::Time::now(), pc.header.stamp);
+  pc.header.frame_id = svo::Visualizer::kWorldFrame;
+  pc.clear();
+
+  for (size_t idx = 0; idx < vec_of_position_vec.size(); idx++)
+  {
+    const rpg::PositionVec& positions = vec_of_position_vec[idx];
+    pc.reserve(pc.size() + positions.size());
+    for (size_t i = 0; i < positions.size(); i++)
+    {
+      svo::Visualizer::PointType pt;
+      pt.x = positions[i].x();
+      pt.y = positions[i].y();
+      pt.z = positions[i].z();
+      pt.intensity = intensities[idx];
+      pc.push_back(pt);
+    }
+  }
+  pub.publish(pc);
 }
 
 void publishStringsAtPositions(
@@ -205,10 +235,10 @@ Visualizer::Visualizer(const std::string& trace_dir,
 #endif
 
 #ifdef SVO_GLOBAL_MAP
-  pub_global_map_kfs_opt_ = pnh_.advertise<PointCloud>("global_map_kfs", 10);
-  pub_global_map_query_kfs_ =
-      pnh_.advertise<PointCloud>("global_map_query_kfs", 10);
-  pub_global_map_pts_opt_ = pnh_.advertise<PointCloud>("global_map_pts", 10);
+
+  pub_global_map_kfs_opt_ = pcl_ros::Publisher<PointType>(pnh_, "global_map_kfs", 10);
+  pub_global_map_query_kfs_ =pcl_ros::Publisher<PointType>(pnh_, "global_map_query_kfs", 10);
+  pub_global_map_pts_opt_ = pcl_ros::Publisher<PointType>(pnh_, "global_map_pts", 10);
   pub_global_map_vis_ =
       pnh_.advertise<visualization_msgs::Marker>("global_map_all_vis", 10);
   pub_global_map_keypoints_vis_ =

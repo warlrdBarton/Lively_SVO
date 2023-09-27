@@ -2,9 +2,8 @@
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Point3.h>
 #include <boost/optional.hpp>
-
+#include <gtsam/geometry/Point3.h>
 namespace gtsam
 {
 template <class POSE, class POINT>
@@ -73,14 +72,14 @@ inline Vector CameraBearingFactor<Pose3, Point3>::evaluateError(
   if (H1)
   {
     gtsam::Matrix dTwc_dTwb;
-    Pose3 T_w_cam = T_w_body.compose(T_body_cam_, dTwc_dTwb);
+    gtsam::Pose3 T_w_cam = T_w_body.compose(T_body_cam_, dTwc_dTwb);
     gtsam::Matrix dpc_dpw;
     gtsam::Matrix dpc_dTwc;
-    Point3 p_c = T_w_cam.transform_to(p_w, dpc_dTwc, dpc_dpw);
+    gtsam::Point3 p_c = T_w_cam.transformTo(p_w, dpc_dTwc, dpc_dpw);
 
     gtsam::Matrix df_dpc;
-    Point3 f = p_c.normalized(df_dpc);
-    Point3 e_f = f - measured_;
+    gtsam::Point3 f = normalize(p_c,df_dpc);
+    gtsam::Point3 e_f = f - measured_;
 
     *H1 = df_dpc * dpc_dTwc * dTwc_dTwb;
     *H2 = df_dpc * dpc_dpw;
@@ -89,9 +88,10 @@ inline Vector CameraBearingFactor<Pose3, Point3>::evaluateError(
   }
   else
   {
-    Pose3 T_w_cam = T_w_body.compose(T_body_cam_);
-    Point3 p_c = T_w_cam.transform_to(p_w);
-    Point3 f = p_c.normalized();
+    gtsam::Pose3 T_w_cam = T_w_body.compose(T_body_cam_);
+    gtsam::Point3 p_c = T_w_cam.transformTo(p_w);
+    gtsam::Matrix df_dpc;
+    gtsam::Point3 f = normalize(p_c,df_dpc);
     return Vector3(f - measured_);
   }
 }

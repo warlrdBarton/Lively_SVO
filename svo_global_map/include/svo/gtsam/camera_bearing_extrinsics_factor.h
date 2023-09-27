@@ -4,7 +4,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Point3.h>
 #include <boost/optional.hpp>
-
+#include <gtsam/geometry/Point3.h>
 namespace gtsam
 {
 template <class POSE, class POINT>
@@ -74,14 +74,14 @@ inline Vector CameraBearingExtrinsicsFactor<Pose3, Point3>::evaluateError(
   {
     gtsam::Matrix dTwc_dTwb;
     gtsam::Matrix dTwc_dTbc;
-    Pose3 T_w_c = T_w_b.compose(T_b_c, dTwc_dTwb, dTwc_dTbc);
+    gtsam::Pose3 T_w_c = T_w_b.compose(T_b_c, dTwc_dTwb, dTwc_dTbc);
     gtsam::Matrix dpc_dpw;
     gtsam::Matrix dpc_dTwc;
-    Point3 p_c = T_w_c.transform_to(p_w, dpc_dTwc, dpc_dpw);
+    gtsam::Point3 p_c = T_w_c.transformTo(p_w, dpc_dTwc, dpc_dpw);
 
     gtsam::Matrix df_dpc;
-    Point3 f = p_c.normalized(df_dpc);
-    Point3 e_f = f - measured_;
+    gtsam::Point3 f = normalize(p_c,df_dpc);
+    gtsam::Point3 e_f = f - measured_;
 
     gtsam::Matrix df_dTwc = df_dpc * dpc_dTwc;
     *H1 = df_dTwc * dTwc_dTwb;
@@ -92,9 +92,10 @@ inline Vector CameraBearingExtrinsicsFactor<Pose3, Point3>::evaluateError(
   }
   else
   {
-    Pose3 T_w_cam = T_w_b.compose(T_b_c);
-    Point3 p_c = T_w_cam.transform_to(p_w);
-    Point3 f = p_c.normalized();
+    gtsam::Pose3 T_w_cam = T_w_b.compose(T_b_c);
+    gtsam::Point3 p_c = T_w_cam.transformTo(p_w);
+    gtsam::Matrix df_dpc;
+    gtsam::Point3 f = normalize(p_c,df_dpc);
     return Vector3(f - measured_);
   }
 }

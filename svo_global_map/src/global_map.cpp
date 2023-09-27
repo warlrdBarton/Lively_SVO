@@ -413,7 +413,7 @@ void GlobalMap::optimize()
       Eigen::Vector3d pt = estimate
                                .at<gtsam::Point3>(gtsam::Symbol(
                                    'l', static_cast<size_t>(v.first)))
-                               .vector();
+                               ;
       std::cerr << "l" << v.first << ": " << pt.x() << ", " << pt.y() << ", "
                 << pt.z() << "; ";
     }
@@ -1493,7 +1493,7 @@ bool GlobalMap::getPointFromGraphByIdUnsafe(const int pt_id,
     gtsam::Key pt_key = gtsam::Symbol('l', static_cast<size_t>(pt_id));
     if (estimate.exists(pt_key))
     {
-      *pt = estimate.at<gtsam::Point3>(pt_key).vector();
+      *pt = estimate.at<gtsam::Point3>(pt_key);
       return true;
     }
     else

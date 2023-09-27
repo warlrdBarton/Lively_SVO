@@ -2,24 +2,26 @@
 
 #include <utility> // std::pair
 #include <boost/shared_ptr.hpp>
+#include <gtsam/geometry/Point3.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Cal3_S2.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/ProjectionFactor.h>
+#include <gtsam/slam/SmartProjectionPoseFactor.h>
+// #include <gtsam/slam/generic_stereoFactor.h>
+// forward declarationsSmartProjectionPoseFactor
+// /home/sunteng/catkin_ws/src/gtsam-4.2.0/gtsam_unstable/slam/PoseBetweenFactor.h
+// /home/sunteng/catkin_ws/src/gtsam-4.2.0/gtsam/sam/RangeFactor.h
+// /home/sunteng/catkin_ws/src/rpg_svo_pro_open/svo_global_map/include/svo/gtsam/camera_bearing_extrinsics_factor.h
+// /home/sunteng/catkin_ws/src/rpg_svo_pro_open/svo_global_map/include/svo/gtsam/camera_bearing_factor.h
 
-// forward declarations
-namespace gtsam {
-class Values;
-class Pose3;
-class Point3;
-class Cal3_S2;
-template<typename KEY, typename VALUE> class FastMap;
-template<class CALIBRATION> class SmartProjectionPoseFactor;
-template<class POSE, class LANDMARK, class CALIBRATION>
-class GenericProjectionFactor;
-class SmartProjectionParams;
-template <class VALUE> class BetweenFactor;
-template<class Pose> class PoseBetweenFactor;
-template<class Pose, class Point, class T> class RangeFactorWithTransform;
-template<class POSE, class LANDMARK> class CameraBearingFactor;
-template<class POSE, class LANDMARK> class CameraBearingExtrinsicsFactor;
-} // namespace gtsam
+#include "slam/PoseBetweenFactor.h"
+#include "sam/RangeFactor.h"
+
+#include "camera_bearing_extrinsics_factor.h"
+#include "camera_bearing_factor.h"
 
 namespace svo {
 

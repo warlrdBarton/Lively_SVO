@@ -11,6 +11,12 @@ message(STATUS ${GTSAM_LIBRARIES})
 
 include(SvoSetup)
 include_directories(${GTSAM_INCLUDE_DIR})
+include_directories(/home/sunteng/catkin_ws/src/gtsam-4.2.0/gtsam_unstable)
+include_directories(/home/sunteng/catkin_ws/src/gtsam-4.2.0/gtsam)
+
+
+# get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+message(${GTSAM_INCLUDE_DIR}) 
 
 set(HEADERS
   # gtsam interface

@@ -22,8 +22,10 @@ if(USE_GLOBAL_MAP OR USE_GTSAM)
 endif()
 message(STATUS "GTSAM include dir: ${GTSAM_INCLUDE_DIR}")
 message(STATUS "GTSAM library: ${GTSAM_LIBRARIES}")
-include_directories(${GTSAM_INCLUDE_DIR})
 
+include_directories(${GTSAM_INCLUDE_DIR})
+include_directories(/home/sunteng/catkin_ws/src/gtsam-4.2.0/gtsam_unstable)
+include_directories(/home/sunteng/catkin_ws/src/gtsam-4.2.0/gtsam)
 
 set(HEADERS
   include/svo_ros/svo_interface.h

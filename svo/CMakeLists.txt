@@ -37,6 +37,11 @@ list(APPEND SVO_HEADERFILES
   include/svo/svo.h
   )
 
+
+foreach(d ${INCLUDE_DIRS})
+  message(${d})
+endforeach(${INCLUDE_DIRS})
+
 ################################################################################
 # Create svo library
 include_directories(include ${INCLUDE_DIRS})

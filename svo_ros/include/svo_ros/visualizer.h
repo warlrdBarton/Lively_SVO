@@ -22,8 +22,10 @@
 #include <tf/transform_broadcaster.h>
 #include <image_transport/image_transport.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
+#include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl_ros/publisher.h>
+
 
 #include <svo/global.h>
 #include <svo/common/types.h>
@@ -46,9 +48,9 @@ class FrameHandlerBase;
 class Visualizer
 {
 public:
-  typedef std::shared_ptr<Visualizer> Ptr;
-  typedef pcl::PointXYZI PointType;
-  typedef pcl::PointCloud <PointType> PointCloud;
+  using Ptr= std::shared_ptr<Visualizer> ;
+  using PointType=pcl::PointXYZI ;
+  using PointCloud=pcl::PointCloud <PointType> ;
   
 
   static std::string kWorldFrame;
@@ -101,9 +103,9 @@ public:
 #endif
 
 #ifdef SVO_GLOBAL_MAP
-  ros::Publisher pub_global_map_kfs_opt_;
-  ros::Publisher pub_global_map_query_kfs_;
-  ros::Publisher pub_global_map_pts_opt_;
+  pcl_ros::Publisher<PointType> pub_global_map_kfs_opt_;
+  pcl_ros::Publisher<PointType> pub_global_map_query_kfs_;
+  pcl_ros::Publisher<PointType> pub_global_map_pts_opt_;
   ros::Publisher pub_global_map_vis_;
   ros::Publisher pub_global_map_keypoints_vis_;
   ros::Publisher pub_global_map_matched_points_;

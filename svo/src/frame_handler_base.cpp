@@ -27,7 +27,7 @@
 #endif
 
 #ifdef SVO_GLOBAL_MAP
-#include <svo/global_map.h>
+#include "svo/global_map.h"
 #endif
 
 # include <svo/img_align/sparse_img_align.h>
