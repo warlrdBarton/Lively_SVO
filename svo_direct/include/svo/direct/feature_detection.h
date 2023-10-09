@@ -142,6 +142,25 @@ public:
 
 
 //------------------------------------------------------------------------------
+/// @todo
+class FastGradLineDetector : public AbstractDetector
+{
+public:
+  using AbstractDetector::AbstractDetector; // default constructor
+  virtual ~FastGradLineDetector() = default;
+
+  virtual void detect(
+      const ImgPyr& img_pyr,
+      const cv::Mat& mask,
+      const size_t max_n_features,
+      Keypoints& px_vec,
+      Scores& score_vec,
+      Levels& level_vec,
+      Gradients& grad_vec,
+      FeatureTypes& types_vec) override;
+};
+
+//------------------------------------------------------------------------------
 /// @brief the cuda fast detector with gradient detector
 class CudaFastGradDetector : public AbstractDetector
 {

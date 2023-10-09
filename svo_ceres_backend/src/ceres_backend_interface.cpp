@@ -499,7 +499,7 @@ bool CeresBackendInterface::addStatesAndInertialMeasurementsToBackend(
   }
 
   // Get measurements, newest is interpolated to exactly match timestamp of
-  // frame_bundle
+  // frame_bundle and delete the imu measurements which before this frame timestamp
   if (!imu_handler_->getMeasurementsContainingEdges(current_frame_bundle_stamp,
                                                     imu_measurements, true))
   {

@@ -348,7 +348,7 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
     // time delta
     double dt = nexttime - time;//the change time bewteen two imu frame
 
-    if (t_end_adjusted < nexttime)// compute the last timestamp to 
+    if (t_end_adjusted < nexttime)// compute the last timestamp status
     {
       double interval = nexttime - imu_measurements[i].timestamp_;
       nexttime = t_end_adjusted;
@@ -408,6 +408,7 @@ int ImuError::propagation(const ImuMeasurements& imu_measurements,
     const double cos_theta_half = cos(theta_half);
     dq.vec() = sinc_theta_half * omega_S_true * 0.5 * dt;// approx 1/2*w*dt
     dq.w() = cos_theta_half;//cos(theta/2)
+    dq.normalize();
     Eigen::Quaterniond Delta_q_1 = Delta_q * dq;
     // rotation matrix integral:
     const Eigen::Matrix3d C = Delta_q.toRotationMatrix();//the rotate matrix before perlurbation

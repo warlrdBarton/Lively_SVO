@@ -174,6 +174,7 @@ bool Estimator::addStates(const FrameBundleConstPtr& frame_bundle,
     {
       // in case this is the first frame ever, let's initialize the pose:
       bool success0 = initPoseFromImu(imu_measurements, T_WS);
+      SVO_WARN_STREAM("init t_ws"<<T_WS);
       DEBUG_CHECK(success0) << "pose could not be initialized from imu measurements.";
       if (!success0)
       {

@@ -42,7 +42,8 @@ enum class DetectorType
   kGradHuangMumford,///< 'Natural' edges (see Huang CVPR'99)
   kCanny,           ///< Canny edge detector
   kSobel,            ///< Sobel edge detector
-  kCudaFastGrad       ///< cuda Combined Fast and Gradient detector
+  kCudaFastGrad,       ///< cuda Combined Fast and Gradient detector
+  kFastGradLine       /// < combined fast , gradien and elsed segment detector
 };
 
 //------------------------------------------------------------------------------
