@@ -65,9 +65,9 @@ AbstractDetector::Ptr makeDetector(
   case DetectorType::kCudaFastGrad://BUG need fix memory lack bug 
     detector.reset(new CudaFastGradDetector(options, cam));
     break;
-  case DetectorType::kFastGradLine://TODO
-    detector.reset(new FastGradLineDetector(options, cam));
-    break;
+  // case DetectorType::kFastGradLine://TODO
+  //   detector.reset(new FastGradLineDetector(options, cam));
+  //   break;
   default:
     SVO_ERROR_STREAM("Detector unknown!");
   }

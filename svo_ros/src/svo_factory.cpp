@@ -88,14 +88,17 @@ DetectorOptions loadDetectorOptions(const ros::NodeHandle& pnh)
   o.threshold_primary = vk::param<int>(pnh, "detector_threshold_primary", 10);
   o.threshold_secondary = vk::param<int>(pnh, "detector_threshold_secondary", 200);
   o.threshold_shitomasi = vk::param<int>(pnh, "detector_threshold_shitomasi", 100);
-  if(vk::param<bool>(pnh, "use_edgelets", true))
-  {
-o.detector_type = DetectorType::kFastGrad;
-    if(vk::param<bool>(pnh, "use_cuda", false))
-    o.detector_type =DetectorType::kCudaFastGrad;
-  }
-  else
-    o.detector_type = DetectorType::kFast;
+  
+  o.detector_type = static_cast<DetectorType>(vk::param<int>(pnh, "detector_type", 2));
+  
+//   if(vk::param<bool>(pnh, "use_edgelets", true))
+//   {
+//     o.detector_type = DetectorType::kFastGrad;
+//     if(vk::param<bool>(pnh, "use_cuda", false))
+//     o.detector_type =DetectorType::kCudaFastGrad;
+//   }
+//   else
+//     o.detector_type = DetectorType::kFast;
   return o;
 }
 
