@@ -140,10 +140,11 @@ FrameHandlerBase::FrameHandlerBase(const BaseOptions& base_options, const Reproj
   // DEBUG ***
   //pose_optimizer_->initTracing(options_.trace_dir);
   DetectorOptions detector_options2 = detector_options;
+  SegmentDetectorOptions segment_detector_options ;
   //detector_options2.detector_type = DetectorType::kGridGrad;
 
   depth_filter_.reset(new DepthFilter(depthfilter_options, detector_options2, cams_));
-  initializer_ = initialization_utils::makeInitializer(init_options, tracker_options, detector_options, cams_);
+  initializer_ = initialization_utils::makeInitializer(init_options, tracker_options, detector_options,segment_detector_options, cams_);
   overlap_kfs_.resize(cams_->getNumCameras());
 
   VLOG(1) << "SVO initialized";

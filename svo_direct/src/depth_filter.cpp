@@ -293,7 +293,7 @@ void initializeSeeds(
     feature_detector->detect(
           frame->img_pyr_, frame->getMask(), max_n_features, frame->px_vec_,
           frame->score_vec_, frame->level_vec_, frame->grad_vec_, frame->type_vec_);
-
+ 
     frame->num_features_ = frame->px_vec_.cols();
     frame->invmu_sigma2_a_b_vec_.resize(Eigen::NoChange, frame->numFeatures());
     frame->landmark_vec_.resize(frame->px_vec_.cols(), nullptr);

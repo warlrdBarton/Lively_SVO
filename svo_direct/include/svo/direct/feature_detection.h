@@ -13,6 +13,7 @@
 #include <svo/common/occupancy_grid_2d.h>
 #include <svo/direct/feature_detection_types.h>
 #include <opencv2/cudafeatures2d.hpp>
+#include "svo/direct/ELSED.h"
 namespace svo {
 
 //------------------------------------------------------------------------------
@@ -297,5 +298,72 @@ public:
       Gradients& grad_vec,
       FeatureTypes& types_vec) override;
 };
+
+
+
+
+class SegmentAbstractDetector
+{
+public:
+  typedef std::shared_ptr<SegmentAbstractDetector> Ptr;
+
+  SegmentDetectorOptions options_;
+
+  /// Default constructor.
+  SegmentAbstractDetector(
+      const SegmentDetectorOptions& options,
+      const CameraPtr& cam);
+
+  /// Default destructor.
+  virtual ~SegmentAbstractDetector() = default;
+
+  // no copy
+  SegmentAbstractDetector& operator=(const SegmentAbstractDetector&) = delete;
+  SegmentAbstractDetector(const SegmentAbstractDetector&) = delete;
+
+  void detect(const FramePtr &frame);
+
+  virtual void detect(
+      const ImgPyr& img_pyr,
+      const cv::Mat& mask,
+      const size_t max_n_features,
+      Segments& seg_vec,
+      Scores& len_vec,
+      Levels& level_vec,
+      FeatureTypes& types_vec) = 0;
+
+  inline void resetGrid()
+  {
+    grid_.reset();
+  }
+
+  OccupandyGrid2D grid_;
+
+};
+
+
+class ElsedDetector : public SegmentAbstractDetector
+{
+public:
+  ElsedDetector( const SegmentDetectorOptions& options,
+      const CameraPtr& cam): SegmentAbstractDetector(options, cam){
+    elsed_.reset(new upm::ELSED(options_));
+  }
+  virtual ~ElsedDetector() = default;
+  
+  virtual void detect(
+      const ImgPyr& img_pyr,
+      const cv::Mat& mask,
+      const size_t max_n_features,
+      Segments& seg_vec,
+      Scores& len_vec,
+      Levels& level_vec,
+      FeatureTypes& types_vec) override;
+  
+  private:
+    std::unique_ptr<upm::ELSED> elsed_;
+};
+
+
 
 } // namespace svo

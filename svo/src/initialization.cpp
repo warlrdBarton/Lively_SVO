@@ -430,6 +430,20 @@ StereoInit::StereoInit(
   stereo_.reset(new StereoTriangulation(stereo_options, detector_));
 }
 
+StereoInit::StereoInit(
+    const InitializationOptions& init_options,
+    const FeatureTrackerOptions& tracker_options,
+    const DetectorOptions& detector_options,
+    const SegmentDetectorOptions& segment_detector_options,
+    const CameraBundlePtr& cams)
+  : AbstractInitialization(init_options, tracker_options, detector_options, cams)
+{
+  StereoTriangulationOptions stereo_options;
+  detector_ = feature_detection_utils::makeDetector(detector_options, cams->getCameraShared(0));
+  segment_detector_ = feature_detection_utils::makeSegmentDetector(segment_detector_options, cams->getCameraShared(0));
+  stereo_.reset(new StereoTriangulation(stereo_options, detector_,segment_detector_));
+}
+
 InitResult StereoInit::addFrameBundle(
     const FrameBundlePtr& frames)
 {
@@ -897,6 +911,46 @@ AbstractInitialization::UniquePtr makeInitializer(
   }
   return initializer;
 }
+
+
+
+AbstractInitialization::UniquePtr makeInitializer(
+    const InitializationOptions& init_options,
+    const FeatureTrackerOptions& tracker_options,
+    const DetectorOptions& detector_options,
+    const SegmentDetectorOptions & segment_options,
+    const CameraBundle::Ptr& cams)
+{
+  AbstractInitialization::UniquePtr initializer;
+  switch(init_options.init_type)
+  {
+    case InitializerType::kHomography:
+      initializer.reset(new HomographyInit(init_options, tracker_options, detector_options, cams));
+      break;
+    case InitializerType::kTwoPoint:
+      initializer.reset(new TwoPointInit(init_options, tracker_options, detector_options, cams));
+      break;
+    case InitializerType::kFivePoint:
+      initializer.reset(new FivePointInit(init_options, tracker_options, detector_options, cams));
+      break;
+    case InitializerType::kOneShot:
+      initializer.reset(new OneShotInit(init_options, tracker_options, detector_options, cams));
+      break;
+    case InitializerType::kStereo:
+      initializer.reset(new StereoInit(init_options, tracker_options, detector_options,segment_options, cams));
+      break;
+    case InitializerType::kArrayGeometric:
+      initializer.reset(new ArrayInitGeometric(init_options, tracker_options, detector_options, cams));
+      break;
+    case InitializerType::kArrayOptimization:
+      initializer.reset(new ArrayInitOptimization(init_options, tracker_options, detector_options, cams));
+      break;
+    default:
+      LOG(FATAL) << "Initializer type not known.";
+  }
+  return initializer;
+}
+
 
 void copyBearingVectors(
     const Frame& frame_cur,

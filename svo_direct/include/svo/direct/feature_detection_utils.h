@@ -15,11 +15,13 @@
 #include <svo/common/occupancy_grid_2d.h>
 #include <svo/direct/feature_detection_types.h>
 #include <opencv2/cudafeatures2d.hpp>
-
+#include <svo/direct/ELSED.h>
 namespace svo {
 
 class AbstractDetector;
+class SegmentAbstractDetector;
 using AbstractDetectorPtr = std::shared_ptr<AbstractDetector>;
+using SegmentAbstractDetectorPtr = std::shared_ptr<SegmentAbstractDetector>;
 
 namespace feature_detection_utils {
 
@@ -27,7 +29,8 @@ namespace feature_detection_utils {
 AbstractDetectorPtr makeDetector(
     const DetectorOptions& options,
     const CameraPtr& cam);
-
+SegmentAbstractDetectorPtr makeSegmentDetector(const SegmentDetectorOptions& options,
+    const CameraPtr& cam);
 void fillFeatures(const Corners& corners,
     const FeatureType& type,
     const cv::Mat& mask,
@@ -193,5 +196,28 @@ double getDominantAngle(
     const AngleHistogram& hist);
 
 } // angle_hist
+
+void ElSEDdetect(
+    const ImgPyr& img_pyr,
+    const int border,
+    const size_t min_level,
+    const size_t max_level,
+    ScoreSegments& segs,
+    OccupandyGrid2D& grid,
+    std::unique_ptr<upm::ELSED> &elsed_);
+
+void fillSegment(
+    const ScoreSegments& segs,//same level with corner
+    const FeatureType& type,
+    const cv::Mat& mask,
+    const size_t max_n_features,
+    Segments& keysegs,
+    Scores& scores,
+    Levels& levels,
+    FeatureTypes& types,
+    OccupandyGrid2D& grid,
+    double threshold
+);
+
 } // feature_detection_utils
 } // namespace svo

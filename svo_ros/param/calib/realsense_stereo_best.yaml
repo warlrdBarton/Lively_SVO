@@ -76,26 +76,5 @@ imu_initialization:
   acc_bias_sigma: 1.2623857018616855e-02
 
 
-#delay_imu_cam is important to align imu and camera 
-#cause 10ms could progation 3 imu measurment 
-# imu_params:
-#   delay_imu_cam: 0.010194681654392164
-#   max_imu_delta_t: 0.01
-#   acc_max: 176.0
-#   omega_max: 17
-#   sigma_omega_c: 0.00015328565565717243
-#   sigma_acc_c: 0.0016442215160514019
-#   sigma_omega_bias_c: 1.981745267901575e-06
-#   sigma_acc_bias_c: 0.00011257398107137191
-#   sigma_integration: 0.0
-#   g: 9.795950538598934
-#   imu_rate: 200
 
-# imu_initialization:
-#   velocity: [0.0, 0, 0.0]
-#   omega_bias: [0.0, 0, 0.0]
-#   acc_bias: [0.0, 0.0, 0.0]
-#   velocity_sigma: 1.0
-#   omega_bias_sigma: 1.981745267901575e-06
-#   acc_bias_sigma: 0.00011257398107137191
 

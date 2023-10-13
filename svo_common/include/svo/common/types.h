@@ -18,6 +18,7 @@ using FloatType = double;
 //------------------------------------------------------------------------------
 // Feature containers.
 using Keypoint = Eigen::Matrix<FloatType, 2, 1>;
+using Segment =Eigen::Matrix<FloatType, 4, 1>;
 using BearingVector = Eigen::Matrix<FloatType, 3, 1>;
 using Position = Eigen::Matrix<FloatType, 3, 1>;
 using GradientVector = Eigen::Matrix<FloatType, 2, 1>;
@@ -33,6 +34,8 @@ using Levels = Eigen::Matrix<Level, Eigen::Dynamic, 1, Eigen::ColMajor>;
 using InlierMask = Eigen::Matrix<bool, Eigen::Dynamic, 1, Eigen::ColMajor>;
 using SeedStates = Eigen::Matrix<FloatType, 4, Eigen::Dynamic, Eigen::ColMajor>;
 using TrackIds = Eigen::VectorXi;
+using Segments =Eigen::Matrix<FloatType,4, Eigen::Dynamic,  Eigen::ColMajor>;
+using Lengths = Eigen::Matrix<FloatType,1, Eigen::Dynamic,  Eigen::ColMajor>;
 
 //------------------------------------------------------------------------------
 // Forward declarations and common types for simplicity.
@@ -62,14 +65,18 @@ enum class FeatureType : uint8_t
   kEdgeletSeed = 0,
   kCornerSeed = 1,
   kMapPointSeed = 2,
-  kEdgeletSeedConverged = 3,
-  kCornerSeedConverged = 4,
-  kMapPointSeedConverged = 5,
-  kEdgelet = 6,
-  kCorner = 7,
-  kMapPoint = 8,
-  kFixedLandmark = 9,
-  kOutlier = 10
+  kSegmentSeed=3,
+  kEdgeletSeedConverged = 4,
+  kCornerSeedConverged = 5,
+  kMapPointSeedConverged = 6,
+  kSegmentSeedConverged = 7,
+  kEdgelet = 8,
+  kCorner = 9,
+  kMapPoint = 10,
+  kSegment=11,
+  kFixedLandmark = 12,
+  kOutlier = 13
+  
 };
 
 using FeatureTypes = std::vector<FeatureType>;
@@ -77,7 +84,7 @@ using FeatureTypes = std::vector<FeatureType>;
 
 inline bool isSeed(const FeatureType& t)
 {
-  return static_cast<uint8_t>(t) < 6;
+  return static_cast<uint8_t>(t) < 8;
 }
 
 inline bool isCornerEdgeletSeed(const FeatureType& t)

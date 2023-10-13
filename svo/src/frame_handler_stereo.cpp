@@ -35,12 +35,18 @@ FrameHandlerStereo::FrameHandlerStereo(
       base_options, reprojector_options, depth_filter_options,
       feature_detector_options, init_options, tracker_options, stereo_camera)
 {
+
   // init initializer
   stereo_triangulation_.reset(
         new StereoTriangulation(
           stereo_options,
           feature_detection_utils::makeDetector(
-            feature_detector_options, cams_->getCameraShared(0))));
+            feature_detector_options, cams_->getCameraShared(0)),
+            
+            feature_detection_utils::makeSegmentDetector(
+             SegmentDetectorOptions() , cams_->getCameraShared(0)
+            )
+            ));
 }
 
 UpdateResult FrameHandlerStereo::processFrameBundle()

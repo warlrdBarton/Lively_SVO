@@ -21,6 +21,11 @@ set(HEADERS
   include/svo/direct/depth_filter.h
   include/svo/direct/depth_estimation.h
   include/svo/direct/elder_zucker.h
+
+  include/svo/direct/EdgeDrawer.h
+  include/svo/direct/FullSegmentInfo.h
+  include/svo/direct/Utils.h
+  include/svo/direct/ELSED.h
 )
 
 set(SOURCES
@@ -32,6 +37,10 @@ set(SOURCES
   src/depth_filter.cpp
   src/depth_estimation.cpp
   src/elder_zucker.cpp
+
+  src/ELSED.cpp
+  src/FullSegmentInfo.cpp
+  src/EdgeDrawer.cpp
   )
 
 cs_add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})

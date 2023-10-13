@@ -19,7 +19,9 @@ class StereoTriangulation;
 class FeatureTracker;
 using FeatureTrackerUniquePtr = std::unique_ptr<FeatureTracker>;
 class AbstractDetector;
+class SegmentAbstractDetector;
 struct DetectorOptions;
+struct SegmentDetectorOptions;
 struct FeatureTrackerOptions;
 
 enum class InitializerType {
@@ -204,6 +206,12 @@ public:
       const FeatureTrackerOptions& tracker_options,
       const DetectorOptions& detector_options,
       const CameraBundlePtr& cams);
+    StereoInit(
+      const InitializationOptions& init_options,
+      const FeatureTrackerOptions& tracker_options,
+      const DetectorOptions& detector_options,
+      const SegmentDetectorOptions& segment_detector_options,
+      const CameraBundlePtr& cams);
 
   virtual ~StereoInit() = default;
 
@@ -212,6 +220,7 @@ public:
 
   std::unique_ptr<StereoTriangulation> stereo_;
   std::shared_ptr<AbstractDetector> detector_;
+  std::shared_ptr<SegmentAbstractDetector> segment_detector_;
 };
 
 class ArrayInitGeometric : public AbstractInitialization
@@ -271,6 +280,14 @@ AbstractInitialization::UniquePtr makeInitializer(
     const FeatureTrackerOptions& tracker_options,
     const DetectorOptions& detector_options,
     const std::shared_ptr<CameraBundle>& camera_array);
+
+AbstractInitialization::UniquePtr makeInitializer(
+    const InitializationOptions& init_options,
+    const FeatureTrackerOptions& tracker_options,
+    const DetectorOptions& detector_options,
+    const SegmentDetectorOptions & segment_options,
+    const std::shared_ptr<CameraBundle>& camera_array);
+
 
 void copyBearingVectors(
     const Frame& frame_cur,

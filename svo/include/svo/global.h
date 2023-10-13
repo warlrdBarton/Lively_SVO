@@ -70,7 +70,10 @@ namespace svo
   typedef std::shared_ptr<SeedImplementation> SeedPtr;
   typedef std::vector<SeedPtr> Seeds;
   class AbstractDetector;
+  class SegmentAbstractDetector;
+
   typedef std::shared_ptr<AbstractDetector> DetectorPtr;
+  typedef std::shared_ptr<SegmentAbstractDetector> SegmentDetectorConstPtr;
   typedef std::vector<cv::Mat> ImgPyr;
   typedef std::vector<FeaturePtr> Features;
   class AbstractBundleAdjustment;

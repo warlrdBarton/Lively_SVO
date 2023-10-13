@@ -24,10 +24,15 @@ public:
 
   StereoTriangulationOptions options_;
   DetectorPtr feature_detector_;
-
+  SegmentDetectorConstPtr segment_detector_;
   StereoTriangulation(
       const StereoTriangulationOptions& options,
       const DetectorPtr& feature_detector);
+  StereoTriangulation(
+      const StereoTriangulationOptions& options,
+      const DetectorPtr& feature_detector,
+      const  SegmentDetectorConstPtr& segment_detector
+      );
   ~StereoTriangulation() = default;
 
   void compute(const FramePtr& frame0, const FramePtr& frame1);

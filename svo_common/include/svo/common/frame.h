@@ -47,7 +47,7 @@ public:
   cv::Mat                       original_color_image_;
   // safe without the Eigen aligned allocator, since Position is 24 bytes
   std::vector<std::pair<int, Position>, Eigen::aligned_allocator<
-  std::pair<int, Position> > > key_pts_;                //!< Five features and associated 3D points which are used to detect if two frames have overlapping field of view. store index + depth
+  std::pair<int, Position> > >  key_pts_;                //!< Five features and associated 3D points which are used to detect if two frames have overlapping field of view. store index + depth
   bool                          is_keyframe_ = false;   //!< Was this frames selected as keyframe?
   int                           last_published_ts_;     //!< Timestamp of last publishing.
   Quaternion                    R_imu_world_;           //!< IMU Attitude provided by *external* attitude extimator
@@ -59,18 +59,24 @@ public:
   // Features
   // All vectors must have the same length/cols at all time!
   // {
-  size_t num_features_ = 0u;    ///< the vectors below are initialized to the maximum number of feature-tracks
-  Keypoints px_vec_;            ///< Pixel Coordinates
-  Bearings f_vec_;              ///< Bearing Vector
-  Scores score_vec_;            ///< Keypoint detection scores
-  Levels  level_vec_;           ///< Level of the feature
-  Gradients grad_vec_;          ///< Gradient direction of edgelet normal
-  FeatureTypes type_vec_;       ///< Is the feature a corner or an edgelet?
-  Landmarks landmark_vec_;      ///< Reference to 3D point. Can contain nullpointers!
-  TrackIds track_id_vec_;       ///< ID of every observed 3d point. -1 if no point assigned.
-  SeedRefs seed_ref_vec_;       ///< Only for seeds during reprojection
+  size_t num_features_ = 0u;        ///< the vectors below are initialized to the maximum number of feature-tracks
+  Keypoints px_vec_;                ///< Pixel Coordinates
+  Bearings f_vec_;                  ///< Bearing Vector
+  Scores score_vec_;                ///< Keypoint detection scores
+  Levels  level_vec_;               ///< Level of the feature
+  Gradients grad_vec_;              ///< Gradient direction of edgelet normal
+  FeatureTypes type_vec_;           ///< Is the feature a corner or an edgelet?
+  Landmarks landmark_vec_;          ///< Reference to 3D point. Can contain nullpointers!
+  TrackIds track_id_vec_;           ///< ID of every observed 3d point. -1 if no point assigned.
+  SeedRefs seed_ref_vec_;           ///< Only for seeds during reprojection
   SeedStates invmu_sigma2_a_b_vec_; ///< Vector containing all necessary information for seed update.
   std::vector<bool> in_ba_graph_vec_;
+
+  //choice to add line featires in another list or add in to point feature 
+
+  size_t num_segment_ = 0u;
+  // segmentLens segment_length_vec_;
+  
   // }
 
   FloatType seed_mu_range_;

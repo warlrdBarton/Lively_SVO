@@ -20,6 +20,17 @@ StereoTriangulation::StereoTriangulation(
   , feature_detector_(feature_detector)
 { ; }
 
+StereoTriangulation::StereoTriangulation(
+    const StereoTriangulationOptions& options,
+    const AbstractDetector::Ptr& feature_detector,
+    const SegmentAbstractDetector::Ptr& segment_detector
+    )
+  : options_(options)
+  , feature_detector_(feature_detector)
+  , segment_detector_(segment_detector)
+{ ; }
+
+
 void StereoTriangulation::compute(const FramePtr& frame0,
                                   const FramePtr& frame1)
 {
@@ -41,6 +52,18 @@ void StereoTriangulation::compute(const FramePtr& frame0,
   feature_detector_->detect(
         frame0->img_pyr_, frame0->getMask(), max_n_features, new_px,
         new_scores, new_levels, new_grads, new_types);
+
+  //linetodo
+  Segments new_seg;
+  Scores new_seg_score;
+  FeatureTypes new_seg_types;
+  Levels new_seg_levels;
+
+  segment_detector_->detect(
+    frame0->img_pyr_, frame0->getMask(),segment_detector_->options_.max_segment_num, new_seg,
+    new_seg_score, new_seg_levels, new_seg_types
+  );
+
   if(new_px.cols() == 0)
   {
     SVO_ERROR_STREAM("Stereo Triangulation: No features detected.");
@@ -48,6 +71,7 @@ void StereoTriangulation::compute(const FramePtr& frame0,
   }
 
   // Compute and normalize all bearing vectors.
+  //bearing vector corresponing the pixel place in a special camera distort model
   Bearings new_f;
   frame_utils::computeNormalizedBearingVectors(new_px, *frame0->cam(), &new_f);
 
