@@ -122,6 +122,39 @@ void Frame::resizeFeatureStorage(size_t num)
   }
 }
 
+
+void Frame::resizeSegmentStorage(size_t num)
+{
+  if(static_cast<size_t>(seg_vec_.cols()) < num)
+  {
+    const size_t n_new = num - num_segments_;
+
+
+    seg_vec_.conservativeResize(Eigen::NoChange, num);
+    seg_f_vec_.conservativeResize(Eigen::NoChange, num*2);
+    seg_score_vec_.conservativeResize(num);
+    seg_grad_vec_.conservativeResize(Eigen::NoChange, num);
+    seg_level_vec_.conservativeResize(num);
+
+    seg_landmark_vec_.resize(num, nullptr);
+    seg_seed_ref_vec_.resize(num);
+    seg_track_id_vec_.conservativeResize(num);
+    seg_type_vec_.resize(num, FeatureType::kSegment);
+    
+
+    // initial values
+    seg_level_vec_.tail(n_new).setZero();
+    seg_score_vec_.tail(n_new).setConstant(-1);
+    seg_track_id_vec_.tail(n_new).setConstant(-1);
+
+  }
+  else if(num < static_cast<size_t>(px_vec_.cols()))
+  {
+    SVO_ERROR_STREAM("Downsizing storage not implemented. cols = " << seg_vec_.cols()
+                     << " , desired = " << num << ", segment features = " << num_segments_);
+  }
+}
+
 void Frame::clearFeatureStorage()
 {
   px_vec_.resize(Eigen::NoChange, 0);
@@ -161,6 +194,15 @@ FeatureWrapper Frame::getFeatureWrapper(size_t index)
         type_vec_[index], px_vec_.col(index), f_vec_.col(index),
         grad_vec_.col(index), score_vec_(index), level_vec_(index), landmark_vec_[index],
         seed_ref_vec_[index], track_id_vec_(index));
+}
+
+
+SegmentWrapper Frame::getSegmentWrapper(size_t index)
+{
+  CHECK_LT(index, static_cast<size_t>(seg_vec_.cols()));
+  return SegmentWrapper(seg_type_vec_[index], seg_vec_.col(index), seg_f_vec_.col(index*2),seg_f_vec_.col(index*2+1),
+        seg_score_vec_(index), seg_level_vec_(index), seg_grad_vec_.col(index), seg_landmark_vec_[index],
+        seg_seed_ref_vec_[index], seg_track_id_vec_(index));
 }
 
 FeatureWrapper Frame::getEmptyFeatureWrapper()
@@ -436,6 +478,20 @@ void computeNormalizedBearingVectors(
     CHECK(s);
   }
   *f_vec = f_vec->array().rowwise() / f_vec->colwise().norm().array();
+}
+
+void computeSegmentNormalizedBearingVectors(
+    const Segments& seg_vec,
+    const Camera& cam,
+    Bearings* f_vec)
+{
+  CHECK_NOTNULL(f_vec);
+  std::vector<bool> success;
+  cam.backProject3Segments(seg_vec, f_vec, &success);
+  for (const bool s : success) {
+    CHECK(s);
+  }
+  *f_vec = f_vec->array().rowwise() / f_vec->colwise().norm().array();//contain the start and end point bearing vector
 }
 
 } // namespace frame_utils

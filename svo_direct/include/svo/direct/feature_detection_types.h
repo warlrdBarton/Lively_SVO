@@ -37,10 +37,11 @@ namespace svo
     double y1;
     double score_;
     int level_;
+    int seq_id_;
     ScoreSegment() = default;
-    ScoreSegment(const cv::Mat &segment_cv, double score,int level) : x0(segment_cv.at<float>(0, 0)),
-    y0(segment_cv.at<float>(1, 0)),x1(segment_cv.at<float>(2, 0)),y1(segment_cv.at<float>(3, 0)), score_(score),level_(level) {}
-    ScoreSegment(double x0, double y0, double x1, double y1, double score, int level) : x0(x0), y0(y0), x1(x1), y1(y1), score_(score), level_(level) {}
+    ScoreSegment(const cv::Mat &segment_cv, double score,int level,int seq_id=-1) : x0(segment_cv.at<float>(0, 0)),
+    y0(segment_cv.at<float>(1, 0)),x1(segment_cv.at<float>(2, 0)),y1(segment_cv.at<float>(3, 0)), score_(score),level_(level),seq_id_(seq_id) {}
+    ScoreSegment(double x0, double y0, double x1, double y1, double score, int level,int seq_id=-1) : x0(x0), y0(y0), x1(x1), y1(y1), score_(score), level_(level) ,seq_id_(seq_id) {}
     inline bool operator<(const ScoreSegment &rhs) const
     {
       if (score_ == rhs.score_)
@@ -120,7 +121,7 @@ namespace svo
   struct SegmentDetectorOptions
   {
 
-    size_t best_n_segment = 16;
+    size_t best_n_segment = 100;
     /// Maximum one feature per bucked with cell_size width and height
     size_t cell_size = 30;
 
@@ -139,9 +140,9 @@ namespace svo
     /// Primary detector threshold
     double threshold_primary = 10.0;
 
-    double segment_socre_threshold = 30.0;
+    double segment_socre_threshold = 10.0;
 
-    size_t max_segment_num = 15;
+    size_t max_segment_num = 100;
 
     //-----------------------elsed param---------------------------
     int ksize = 5;

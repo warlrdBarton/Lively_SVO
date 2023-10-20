@@ -103,7 +103,7 @@ namespace svo
                       Gradients &gradients,
                       FeatureTypes &types,
                       OccupandyGrid2D &grid)
-    {.
+    {
       CHECK_EQ(keypoints.cols(), levels.size());
       CHECK_EQ(keypoints.cols(), gradients.cols());
       CHECK_EQ(static_cast<size_t>(keypoints.cols()), types.size());
@@ -820,9 +820,7 @@ namespace svo
                     255, cv::THRESH_BINARY);
     }
 
-    void detectELSEDSegment()
-    {
-    }
+ 
 
     //------------------------------------------------------------------------------
     void drawFeatures(
@@ -885,12 +883,32 @@ namespace svo
             cv::circle(*img_rgb, cv::Point2f(px(0), px(1)),
                        5, cv::Scalar(255, 0, 0), 1);
             break;
+
           default:
             cv::circle(*img_rgb, cv::Point2f(px(0), px(1)),
                        5, cv::Scalar(0, 0, 255), -1);
             break;
           }
         }
+        for(size_t i=0;i<frame.num_segments_;i++)
+        {
+          const auto &seg = frame.seg_vec_.col(i);
+          // if (frame.landmark_vec_[i] == nullptr && frame.seed_ref_vec_[i].keyframe == nullptr && only_matched_seg)
+          //   continue;
+          switch (frame.seg_type_vec_[i])
+          {
+          // const auto &g = frame.grad_vec_.col(i);
+          case FeatureType::kSegment:
+            cv::line(*img_rgb, cv::Point2f(seg(0) , seg(1)),
+                     cv::Point2f(seg(2), seg(3)),
+                     cv::Scalar(0, 0, 255), 2);
+            break;
+          default:
+            break;
+          }
+        }
+        
+        
       }
       else
       {
@@ -1114,13 +1132,14 @@ namespace svo
         const size_t max_level,
         ScoreSegments &segs, // in this scope to add segment start mid end 3 point
         OccupandyGrid2D &grid,
-            std::unique_ptr<upm::ELSED> &elsed_)
+        std::unique_ptr<upm::ELSED> &elsed_)
     {
 
       CHECK_EQ(segs.size(), grid.occupancy_.size());
       CHECK_LE(max_level, img_pyr.size() - 1);
       int x0, y0, x1, y1;
       double score;
+      int index=0;// vaild segment index
       for (size_t level = min_level; level <= max_level; ++level)
       {
         const int scale = (1 << level);
@@ -1128,8 +1147,10 @@ namespace svo
 
         const int maxw = img_pyr[level].cols - border;
         const int maxh = img_pyr[level].rows - border;
+        
         for (const auto &score_seg_item : salient_segs)
         {
+
           x0 = score_seg_item.segment[0];
           y0 = score_seg_item.segment[1];
           x1 = score_seg_item.segment[2];
@@ -1145,12 +1166,15 @@ namespace svo
           if (grid.occupancy_.at(k_0) || grid.occupancy_.at(k_1)|| grid.occupancy_.at(k_middle))
             continue;
           if (score > segs.at(k_0).score_)
-            segs.at(k_0) = svo::ScoreSegment(x0, y0, x1, y1, score,level);
+            segs.at(k_0) = svo::ScoreSegment(x0* scale, y0* scale, x1* scale, y1* scale, score,level,index);
           if (score > segs.at(k_1).score_)
-            segs.at(k_1) = svo::ScoreSegment(x0, y0, x1, y1, score,level);
+            segs.at(k_1) = segs.at(k_0);
           if (score > segs.at(k_middle).score_)
-            segs.at(k_middle) = svo::ScoreSegment(x0, y0, x1, y1, score,level);
+            segs.at(k_middle) = segs.at(k_0);
+
+          ++index;
         }
+
       }
     }
 
@@ -1162,6 +1186,7 @@ namespace svo
         Segments &keysegs,
         Scores &scores,
         Levels &levels,
+        Gradients & grads,
         FeatureTypes &types,
         OccupandyGrid2D &grid,
         double threshold)
@@ -1172,11 +1197,15 @@ namespace svo
 
       // copy new features in temporary vectors
       aslam::Aligned<std::vector, svo::Segment>::type keyseg_vec;
+      aslam::Aligned<std::vector,svo::GradientVector>::type grad_vec;
       std::vector<Score> score_vec;
       std::vector<Level> level_vec;
+      
       keyseg_vec.reserve(segs.size());
       level_vec.reserve(segs.size());
       score_vec.reserve(segs.size());
+      grad_vec.reserve(segs.size());
+      std::set<int> history_segment;
       for (const auto  &score_segment : segs)
       {
         if (score_segment.score_ > threshold)
@@ -1189,9 +1218,14 @@ namespace svo
           {
             continue;
           }
-          keyseg_vec.emplace_back(svo::Segment(score_segment.x0, score_segment.y1,score_segment.x1,score_segment.y1));
+          if (history_segment.find(score_segment.seq_id_)!= history_segment.end()){
+            continue;
+          }
+          history_segment.insert(score_segment.seq_id_);
+          keyseg_vec.emplace_back(svo::Segment(score_segment.x0, score_segment.y0,score_segment.x1,score_segment.y1));
           level_vec.emplace_back(score_segment.level_);
           score_vec.emplace_back(score_segment.score_);
+          grad_vec.emplace_back(svo::GradientVector(score_segment.x1-score_segment.x0,score_segment.y1-score_segment.y0).normalized());
           grid.occupancy_[grid.getCellIndex(score_segment.x0, score_segment.y0)] = true; // in this step just for anther feature detector don't detect feature in same cell
           grid.occupancy_[grid.getCellIndex(score_segment.x1, score_segment.y1)] = true; // in this step just for anther feature detector don't detect feature in same cell
           grid.feature_occupancy_[grid.getCellIndex(score_segment.x1, score_segment.y1)] = Keypoint(score_segment.x1, score_segment.y1);
@@ -1203,8 +1237,8 @@ namespace svo
       std::vector<size_t> idx(score_vec.size());
       std::iota(idx.begin(), idx.end(), 0u);
       std::sort(idx.begin(), idx.end(), [&score_vec](size_t i1, size_t i2)
-                { return score_vec[i1] > score_vec[i2]; });
-
+                { return score_vec[i1] > score_vec[i2];});
+      
       // copy temporary in eigen block
       const size_t n_old = keysegs.cols();
       const size_t n_new = std::min(max_n_features, keyseg_vec.size());
@@ -1213,6 +1247,7 @@ namespace svo
       keysegs.conservativeResize(Eigen::NoChange, n_tot);
       scores.conservativeResize(n_tot);
       levels.conservativeResize(n_tot);
+      grads.conservativeResize(Eigen::NoChange,n_tot);
       types.resize(n_tot, type);
 
       for (size_t i = 0; i < n_new; ++i)
@@ -1221,7 +1256,9 @@ namespace svo
         keysegs.col(n_old + i) = keyseg_vec[j];
         scores(n_old + i) = score_vec[j];
         levels(n_old + i) = level_vec[j];
+        grads.col(n_old+i)= grad_vec[j];
       }
+      
     }
   } // namespace feature_detection_utils
 } // namespace svo

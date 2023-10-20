@@ -12,6 +12,7 @@ namespace svo {
 struct StereoTriangulationOptions
 {
   size_t triangulate_n_features = 120;
+  size_t triangulate_n_segment = 30;
   double mean_depth_inv = 1.0/3.0;
   double min_depth_inv = 1.0/1.0;
   double max_depth_inv = 1.0/50.0;

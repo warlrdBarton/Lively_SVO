@@ -100,7 +100,7 @@ int getBestSearchLevel(
 {
   // Compute patch level in other image
   int search_level = 0;
-  double D = A_cur_ref.determinant();
+  double D = A_cur_ref.determinant();//
   while(D > 3.0 && search_level < max_level)
   {
     search_level += 1;
@@ -109,6 +109,8 @@ int getBestSearchLevel(
   return search_level;
 }
 
+
+//use Bilinear interpolationto computer the referece iamge date value which corresponding the current parallel patch pixel index in affine transform
 bool warpAffine(
     const AffineTransformation2& A_cur_ref,
     const cv::Mat& img_ref,
@@ -127,14 +129,14 @@ bool warpAffine(
 
   // Perform the warp on a larger patch.
   uint8_t* patch_ptr = patch;
-  const Eigen::Vector2f px_ref_pyr = px_ref.cast<float>() / (1<<level_ref);
-  const int stride = img_ref.step.p[0];
+  const Eigen::Vector2f px_ref_pyr = px_ref.cast<float>() / (1<<level_ref);//in the first pyramid level pixel index 
+  const int stride = img_ref.step.p[0];//the stride which mean one row memory offset in the iamge data
   for (int y=-halfpatch_size; y<halfpatch_size; ++y)
   {
     for (int x=-halfpatch_size; x<halfpatch_size; ++x, ++patch_ptr)
     {
       const Eigen::Vector2f px_patch(x, y);
-      const Eigen::Vector2f px(A_ref_cur*px_patch + px_ref_pyr);
+      const Eigen::Vector2f px(A_ref_cur*px_patch + px_ref_pyr);// compute the normalize patch in current image to reference image
       const int xi = std::floor(px[0]);
       const int yi = std::floor(px[1]);
       if (xi<0 || yi<0 || xi+1>=img_ref.cols || yi+1>=img_ref.rows)
@@ -143,12 +145,13 @@ bool warpAffine(
       {
         const float subpix_x = px[0]-xi;
         const float subpix_y = px[1]-yi;
+
         const float w00 = (1.0f-subpix_x)*(1.0f-subpix_y);
         const float w01 = (1.0f-subpix_x)*subpix_y;
         const float w10 = subpix_x*(1.0f-subpix_y);
         const float w11 = 1.0f - w00 - w01 - w10;
         const uint8_t* const ptr = img_ref.data + yi*stride + xi;
-        *patch_ptr = static_cast<uint8_t>(w00*ptr[0] + w01*ptr[stride] + w10*ptr[1] + w11*ptr[stride+1]);
+        *patch_ptr = static_cast<uint8_t>(w00*ptr[0] + w01*ptr[stride] + w10*ptr[1] + w11*ptr[stride+1]);// is gray value 
       }
     }
   }

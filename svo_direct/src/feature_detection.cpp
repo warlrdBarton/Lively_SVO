@@ -545,6 +545,7 @@ void AllPixelsDetector::detect(
       Segments &seg_vec,
       Scores &score_vec,
       Levels &level_vec,
+      Gradients &grad_vec,
       FeatureTypes &types_vec)
   {
 
@@ -552,7 +553,7 @@ void AllPixelsDetector::detect(
       // Detect fast corners.
       ScoreSegments segs(
           grid_.n_cols * grid_.n_rows,
-          ScoreSegment(0, 0, 0, 0, options_.segment_socre_threshold,0));
+          ScoreSegment(0, 0, 0, 0, options_.segment_socre_threshold,0,-1));
 
       fd_utils::ElSEDdetect(img_pyr,
           options_.border,
@@ -569,6 +570,7 @@ void AllPixelsDetector::detect(
           seg_vec,
           score_vec,
           level_vec,
+          grad_vec,
           types_vec,
           grid_,
           options_.segment_socre_threshold

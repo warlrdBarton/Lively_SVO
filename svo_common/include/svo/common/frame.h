@@ -35,6 +35,7 @@ public:
   using mutex_t = std::mutex;
   using ulock_t = std::unique_lock<std::mutex>;
   using Landmarks = std::vector<PointPtr>;
+  using SegmentLandmarks = std::vector<LinePtr>;
   using SeedRefs  = std::vector<SeedRef>;
 
   static int                    frame_counter_;         //!< Counts the number of created frames. Used to set the unique id.
@@ -74,7 +75,18 @@ public:
 
   //choice to add line featires in another list or add in to point feature 
 
-  size_t num_segment_ = 0u;
+  size_t num_segments_ = 0u;
+  Segments seg_vec_;
+  Scores seg_score_vec_;
+  FeatureTypes seg_type_vec_;
+  Levels seg_level_vec_;
+  SegmentLandmarks seg_landmark_vec_;
+  Gradients seg_grad_vec_;              ///< Gradient direction of edgelet normal
+
+  SeedRefs seg_seed_ref_vec_;           ///< Only for seeds during reprojection
+  TrackIds seg_track_id_vec_;           ///< ID of every observed 3d point. -1 if no point assigned.
+  Bearings seg_f_vec_;                  ///< Bearing Vector
+
   // segmentLens segment_length_vec_;
   
   // }
@@ -126,12 +138,17 @@ public:
   /// Resize the number of features. (NOT THREADSAFE)
   void resizeFeatureStorage(size_t num);
 
+
+  void resizeSegmentStorage(size_t num);
+
   void clearFeatureStorage();
 
   /// Copy feature data from another frame.
   void copyFeaturesFrom(const Frame& other);
 
   FeatureWrapper getFeatureWrapper(size_t idx);
+  SegmentWrapper getSegmentWrapper(size_t index);
+
 
   FeatureWrapper getEmptyFeatureWrapper();
 
@@ -148,6 +165,10 @@ public:
   /// Number of features. Not necessarily succesfully tracked ones.
   inline size_t numFeatures() const {
     return num_features_;
+  }
+
+    inline size_t numSegments() const {
+    return num_segments_;
   }
 
   /// Check if i-th keypoint has a reference to a landmark.
@@ -185,6 +206,16 @@ public:
           std::count_if(landmark_vec_.begin(), landmark_vec_.end(),
                         [](const PointPtr& p) { return p != nullptr; }));
   }
+
+  inline size_t numSegmentLandmarks() const {
+
+    return static_cast<size_t>(
+      std::count_if(seg_landmark_vec_.begin(), seg_landmark_vec_.end(),
+                    [](const LinePtr& p) { return p != nullptr; }
+                    )
+    );
+  }
+
 
   inline size_t numFixedLandmarks() const {
     size_t count = 0;
@@ -568,6 +599,9 @@ void computeNormalizedBearingVectors(
     const Keypoints& px_vec,
     const Camera& cam,
     Bearings* f_vec);
-
+void computeSegmentNormalizedBearingVectors(
+    const Segments& seg_vec,
+    const Camera& cam,
+    Bearings* f_vec);
 } // namespace frame_utils
 } // namespace svo

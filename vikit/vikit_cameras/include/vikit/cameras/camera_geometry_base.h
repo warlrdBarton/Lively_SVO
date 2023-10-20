@@ -109,6 +109,11 @@ public:
       const Eigen::Ref<const Eigen::Matrix2Xd>& keypoints,
       Eigen::Matrix3Xd* out_bearing_vectors, std::vector<bool>* success) const;
 
+virtual void backProject3Segments(
+      const Eigen::Ref<const Eigen::Matrix4Xd>& segments,
+      Eigen::Matrix3Xd* out_bearing_vectors, std::vector<bool>* success) const;
+
+
   /// Computes pixel coordinates from bearing vector with Jacobian w.r.t. point.
   virtual const ProjectionResult project3(
       const Eigen::Ref<const Eigen::Vector3d>& point_3d,

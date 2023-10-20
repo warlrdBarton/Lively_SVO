@@ -62,6 +62,146 @@ using KeypointIdentifierList = std::vector<KeypointIdentifier>;
 using Matrix23d = Eigen::Matrix<double, 2, 3>;
 
 
+
+class SegmentIdProvider
+{
+public:
+  SegmentIdProvider() = delete;
+
+  static int getNewSegmentId()
+  {
+    return last_id_.fetch_add(1);
+  }
+
+private:
+   static std::atomic<int> last_id_;
+};
+
+
+struct SegmentIdentifier
+{
+  FrameWeakPtr frame;
+  int frame_id;
+  size_t segment_index_;
+  SegmentIdentifier(const FramePtr& _frame, const size_t _segment_index);
+
+  inline bool operator ==(const SegmentIdentifier& other) const
+  {
+    CHECK(frame.lock() && other.frame.lock());
+    return frame.lock().get() == other.frame.lock().get() &&
+        frame_id == other.frame_id && segment_index_ == other.segment_index_;
+  }
+
+    /// \brief Less than operator. Compares first multiframe ID, then camera index,
+    ///        then keypoint index.
+    bool operator<(const SegmentIdentifier& rhs) const
+    {
+      if (frame_id == rhs.frame_id)
+      {
+          return segment_index_ < rhs.segment_index_;
+      }
+      return frame_id < rhs.frame_id;
+    }
+};
+using SegmentIdentifierList = std::vector<SegmentIdentifier>;
+
+
+
+//3d line 
+class Line
+{
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  enum SegmentType {
+    TYPE_ELSED_SEED,
+    TYPE_ELSED
+  };
+  static int                  point_counter_;           //!< Counts the number of created points. Used to set the unique id.
+  int                         id_;                      //!< Unique ID of the point.
+  Eigen::Vector3d             spos_;                    //!< 3d pos of the start point in the world coordinate frame.
+  Eigen::Vector3d             epos_;                    //!< 3d pos of the end point in the world coordinate frame.
+  Eigen::Vector3d             normal_;                  //!< Surface normal at point.
+  Eigen::Matrix3d             normal_information_;      //!< Inverse covariance matrix of normal estimation.
+  bool                        normal_set_;              //!< Flag whether the surface normal was estimated or not.
+  SegmentIdentifierList      obs_;                     //!< References to keyframes which observe the point.
+  size_t                      n_obs_;                   //!< Number of obervations: Keyframes AND successful reprojections in intermediate frames.
+  // g2oPoint*                   v_pt_;                    //!< Temporary pointer to the point-vertex in g2o during bundle adjustment.
+  int                         last_published_ts_;       //!< Timestamp of last publishing.
+  std::array<int, 8>          last_projected_kf_id_;    //!< Flag for the reprojection: don't reproject a pt twice.
+  SegmentType                   type_;                    //!< Quality of the point.
+  int                         n_failed_reproj_;         //!< Number of failed reprojections. Used to assess the quality of the point.
+  int                         n_succeeded_reproj_;      //!< Number of succeeded reprojections. Used to assess the quality of the point.
+  int                         last_structure_optim_;    //!< Timestamp of last point optimization
+
+  Line(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos);
+
+  Line(int id,const Eigen::Vector3d& spos, const Eigen::Vector3d& epos);
+  ~Line();
+  void addObservation(const FramePtr& frame, const size_t seg_index);
+  /// Add a reference to a frame.
+  // void addFrameRef(Feature* ftr);
+
+  /// Remove reference to a frame.
+  bool deleteFrameRef(Frame* frame);
+
+  /// Initialize point normal. The inital estimate will point towards the frame.
+  void initNormal();
+
+  /// Check whether mappoint has reference to a frame.
+  Feature* findFrameRef(Frame* frame);
+
+  /// Get Frame with similar viewpoint.
+  // bool getCloseViewObs(const Eigen::Vector3d& pos, Feature*& obs) const;
+
+  /// Get number of observations.
+  inline size_t nRefs() const { return obs_.size(); }
+  
+  inline int id() const { return id_; }
+
+  /// Optimize point position through minimizing the reprojection error.
+  void optimize(const size_t n_iter);
+
+  /// Jacobian of point projection on unit plane (focal length = 1) in frame (f).
+  inline static void jacobian_xyz2uv(
+      const Eigen::Vector3d& p_in_f,
+      const Eigen::Matrix3d& R_f_w,
+      Matrix23d& point_jac)
+  {
+    const double z_inv = 1.0/p_in_f[2];
+    const double z_inv_sq = z_inv*z_inv;
+    point_jac(0, 0) = z_inv;
+    point_jac(0, 1) = 0.0;
+    point_jac(0, 2) = -p_in_f[0] * z_inv_sq;
+    point_jac(1, 0) = 0.0;
+    point_jac(1, 1) = z_inv;
+    point_jac(1, 2) = -p_in_f[1] * z_inv_sq;
+    point_jac = - point_jac * R_f_w;
+  }
+
+
+
+  /// Jacobian of point to unit bearing vector.
+  inline static void jacobian_xyz2f(
+      const Eigen::Vector3d& p_in_f,
+      const Eigen::Matrix3d& R_f_w,
+      Eigen::Matrix3d& point_jac)
+  {
+    Eigen::Matrix3d J_normalize;
+    double x2 = p_in_f[0]*p_in_f[0];
+    double y2 = p_in_f[1]*p_in_f[1];
+    double z2 = p_in_f[2]*p_in_f[2];
+    double xy = p_in_f[0]*p_in_f[1];
+    double yz = p_in_f[1]*p_in_f[2];
+    double zx = p_in_f[2]*p_in_f[0];
+    J_normalize << y2+z2, -xy, -zx,
+        -xy, x2+z2, -yz,
+        -zx, -yz, x2+y2;
+    J_normalize *= 1.0 / std::pow(x2+y2+z2, 1.5);
+    point_jac = (-1.0) * J_normalize * R_f_w;
+  }
+
+};
+
 /// A 3D point on the surface of the scene.
 class Point
 {
@@ -80,9 +220,9 @@ public:
 
   int           id_;                       //!< Unique ID of the point.
   Position      pos_;                      //!< 3d pos of the point in the world coordinate frame.
-  KeypointIdentifierList  obs_;                      //!< References to keyframes which observe the point
-  Eigen::Vector3d      normal_;                   //!< Surface normal at point.
-  Eigen::Matrix2d      normal_information_;       //!< Inverse covariance matrix of normal estimation.
+  KeypointIdentifierList  obs_;            //!< References to keyframes which observe the point
+  Eigen::Vector3d      normal_;            //!< Surface normal at point.
+  Eigen::Matrix2d      normal_information_;//!< Inverse covariance matrix of normal estimation.
   bool          normal_set_ = false;       //!< Flag whether the surface normal was estimated or not.
   uint64_t      last_published_ts_ = 0;    //!< Timestamp of last publishing.
   std::array<int, 8> last_projected_kf_id_;//!< Flag for the reprojection: don't reproject a pt twice in the same camera

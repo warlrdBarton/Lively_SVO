@@ -58,6 +58,9 @@ target_link_libraries(svo_test_edgelet_extraction ${PROJECT_NAME})
 cs_add_executable(svo_test_feature_alignment test/test_feature_alignment.cpp)
 target_link_libraries(svo_test_feature_alignment ${PROJECT_NAME})
 
+cs_add_executable(test_elsed_derection test/test_elsed_derection.cpp)
+target_link_libraries(test_elsed_derection ${PROJECT_NAME})
+
 ################################################################################
 ###
 ### GTEST

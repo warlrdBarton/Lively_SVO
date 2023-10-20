@@ -154,6 +154,149 @@ Matcher::MatchResult Matcher::findEpipolarMatchDirect(
                                  d_estimate_inv, d_min_inv, d_max_inv, depth);
 }
 
+
+Matcher::MatchResult Matcher::findEpipolarMatchDirectSegmentEndpoint( 
+  const Frame& ref_frame,
+    const Frame& cur_frame,
+    const SegmentWrapper & ref_ftr,
+    const int endpoint_id,
+    const double d_estimate_inv,
+    const double d_min_inv,
+    const double d_max_inv,
+    double& depth){
+  Transformation T_cur_ref = cur_frame.T_f_w_ * ref_frame.T_f_w_.inverse();
+      const Eigen::Vector2d ref_px_start= ref_ftr.segment.head<2>() ;
+    const Eigen::Vector2d ref_px_end= ref_ftr.segment.tail<2>() ;
+  int zmssd_best = PatchScore::threshold();
+  BearingVector A,B,reference_bearing_endpoint;
+  Eigen::Vector2d reference_px_endpoint;
+  if(endpoint_id==0)
+  {
+     reference_bearing_endpoint=ref_ftr.s_f;
+     reference_px_endpoint=ref_px_start;
+  }
+  else if(endpoint_id==2){
+     reference_bearing_endpoint=ref_ftr.e_f;
+     reference_px_endpoint=ref_px_end;
+    
+  }
+
+  // Compute start and end of epipolar line in old_kf for match search, on image plane
+  
+  
+    A = T_cur_ref.getRotation().rotate(reference_bearing_endpoint) + T_cur_ref.getPosition()*d_min_inv;//little trick
+    B = T_cur_ref.getRotation().rotate(reference_bearing_endpoint) + T_cur_ref.getPosition()*d_max_inv;//little trick
+  
+  Eigen::Vector2d px_A, px_B;
+  cur_frame.cam()->project3(A, &px_A);
+  cur_frame.cam()->project3(B, &px_B);
+  epi_image_ = px_A - px_B;
+
+  // Compute affine warp matrix
+
+  warp::getWarpMatrixAffine(
+      ref_frame.cam_, cur_frame.cam_, reference_px_endpoint, reference_bearing_endpoint,
+      1.0/std::max(0.000001, d_estimate_inv), T_cur_ref, ref_ftr.level, &A_cur_ref_);
+
+  // feature pre-selection
+  reject_ = false;
+  if(options_.epi_search_edgelet_filtering)
+  {
+    const Eigen::Vector2d grad= ref_px_start-ref_px_end ;
+
+    const Eigen::Vector2d grad_cur = (A_cur_ref_ * grad).normalized();
+    const double cosangle = fabs(grad_cur.dot(epi_image_.normalized()));
+    if(cosangle < options_.epi_search_edgelet_max_angle)// if grad angle similar to angle 
+    {
+      reject_ = true;
+      return MatchResult::kFailAngle;
+    }
+  }
+
+  // prepare for match
+  //    - find best search level
+  //    - warp the reference patch
+  search_level_ = warp::getBestSearchLevel(A_cur_ref_, ref_frame.img_pyr_.size()-1);
+  //compute the affine tramsforms determinant which indicate rectangle dimension is 3 times to the source  
+  //so the search_level could be bigger than the source image pyramid level
+
+
+  // length and direction on SEARCH LEVEL
+  epi_length_pyramid_ = epi_image_.norm() / (1<<search_level_);
+
+  GradientVector epi_dir_image = epi_image_.normalized();
+  if(!warp::warpAffine(A_cur_ref_, ref_frame.img_pyr_[ref_ftr.level], reference_px_endpoint,
+                       ref_ftr.level, search_level_, kHalfPatchSize+1, patch_with_border_))
+    return MatchResult::kFailWarp;
+    
+  patch_utils::createPatchFromPatchWithBorder(
+        patch_with_border_, kPatchSize, patch_);
+
+  // Case 1: direct search locally if the epipolar line is too short
+  if(epi_length_pyramid_ < 2.0)
+  {
+    px_cur_ = (px_A+px_B)/2.0;
+    MatchResult res = findLocalMatch(cur_frame, epi_dir_image, search_level_, px_cur_);
+    if(res != MatchResult::kSuccess)
+      return res;
+    cur_frame.cam()->backProject3(px_cur_, &f_cur_);
+    f_cur_.normalize();
+    return matcher_utils::depthFromTriangulation(T_cur_ref, reference_bearing_endpoint, f_cur_, &depth);
+  }
+
+  // Case 2: search along the epipolar line for the best match
+  PatchScore patch_score(patch_); // precompute for reference patch
+  BearingVector C = T_cur_ref.getRotation().rotate(reference_bearing_endpoint) + T_cur_ref.getPosition()*d_estimate_inv;
+  scanEpipolarLine(cur_frame, A, B, C, patch_score, search_level_, &px_cur_, &zmssd_best);
+
+  // check if the best match is good enough
+  if(zmssd_best < PatchScore::threshold())
+  {
+    if(options_.subpix_refinement)
+    {
+      MatchResult res = findLocalMatch(cur_frame, epi_dir_image, search_level_, px_cur_);
+      if(res != MatchResult::kSuccess)
+        return res;
+    }
+
+    cur_frame.cam()->backProject3(px_cur_, &f_cur_);
+    f_cur_.normalize();
+    return matcher_utils::depthFromTriangulation(T_cur_ref, reference_bearing_endpoint, f_cur_, &depth);
+  }
+  else
+    return MatchResult::kFailScore;
+}
+
+
+
+std::vector<Matcher::MatchResult> Matcher::findEpipolarMatchDirectSegment(
+    const Frame& ref_frame,
+    const Frame& cur_frame,
+    const SegmentWrapper & ref_ftr,
+    const double d_estimate_inv_s,
+    const double d_min_inv_s,
+    const double d_max_inv_s,
+    double& depth_s,
+    const double d_estimate_inv_e,
+    const double d_min_inv_e,
+    const double d_max_inv_e,
+    double& depth_e,
+    Segment& seg_cur,
+    BearingVector& s_f_cur,
+    BearingVector& e_f_cur
+    )
+{
+  Matcher::MatchResult s_matchresult=findEpipolarMatchDirectSegmentEndpoint(ref_frame,cur_frame,ref_ftr,0,d_estimate_inv_s,d_min_inv_s,d_max_inv_s,depth_s);
+  s_f_cur=f_cur_;
+  seg_cur.head<2>()= px_cur_;
+  Matcher::MatchResult e_matchresult=findEpipolarMatchDirectSegmentEndpoint(ref_frame,cur_frame,ref_ftr,2,d_estimate_inv_e,d_min_inv_e,d_max_inv_e,depth_e);
+  e_f_cur=f_cur_;
+  seg_cur.tail<2>()= px_cur_;
+
+   return {s_matchresult,
+          e_matchresult};
+};
+
 Matcher::MatchResult Matcher::findEpipolarMatchDirect(
     const Frame& ref_frame,//left
     const Frame& cur_frame,//right
@@ -167,7 +310,7 @@ Matcher::MatchResult Matcher::findEpipolarMatchDirect(
   int zmssd_best = PatchScore::threshold();
 
   // Compute start and end of epipolar line in old_kf for match search, on image plane
-  const BearingVector A = T_cur_ref.getRotation().rotate(ref_ftr.f) + T_cur_ref.getPosition()*d_min_inv;
+  const BearingVector A = T_cur_ref.getRotation().rotate(ref_ftr.f) + T_cur_ref.getPosition()*d_min_inv;//little trick
   const BearingVector B = T_cur_ref.getRotation().rotate(ref_ftr.f) + T_cur_ref.getPosition()*d_max_inv;
   Eigen::Vector2d px_A, px_B;
   cur_frame.cam()->project3(A, &px_A);
@@ -185,23 +328,31 @@ Matcher::MatchResult Matcher::findEpipolarMatchDirect(
   {
     const Eigen::Vector2d grad_cur = (A_cur_ref_ * ref_ftr.grad).normalized();
     const double cosangle = fabs(grad_cur.dot(epi_image_.normalized()));
-    if(cosangle < options_.epi_search_edgelet_max_angle)
+    if(cosangle < options_.epi_search_edgelet_max_angle)// if grad angle similar to angle 
     {
       reject_ = true;
       return MatchResult::kFailAngle;
     }
   }
+  //dgz todo need to compute the same way to filte the segment
+
 
   // prepare for match
   //    - find best search level
   //    - warp the reference patch
   search_level_ = warp::getBestSearchLevel(A_cur_ref_, ref_frame.img_pyr_.size()-1);
+  //compute the affine tramsforms determinant which indicate rectangle dimension is 3 times to the source  
+  //so the search_level could be bigger than the source image pyramid level
+
+
   // length and direction on SEARCH LEVEL
   epi_length_pyramid_ = epi_image_.norm() / (1<<search_level_);
+
   GradientVector epi_dir_image = epi_image_.normalized();
   if(!warp::warpAffine(A_cur_ref_, ref_frame.img_pyr_[ref_ftr.level], ref_ftr.px,
                        ref_ftr.level, search_level_, kHalfPatchSize+1, patch_with_border_))
     return MatchResult::kFailWarp;
+    
   patch_utils::createPatchFromPatchWithBorder(
         patch_with_border_, kPatchSize, patch_);
 

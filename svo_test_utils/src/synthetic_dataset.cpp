@@ -142,19 +142,19 @@ void SyntheticDataset::init()
   cam_ = ncam_->getCameraShared(cam_index_);
 
   // initializing image file list
-  std::string img_filename(dataset_dir_ + "/data/images.txt");
+  std::string img_filename(dataset_dir_ + "/images.txt");
   img_fs_.open(img_filename.c_str());
   if(!img_fs_.is_open())
     LOG(FATAL) << "Failed to load image list from '" << img_filename << "'";
 
   // initializing groundtruth file
-  std::string gt_filename(dataset_dir_ + "/data/groundtruth.txt");
+  std::string gt_filename(dataset_dir_ + "/groundtruth.txt");
   gt_fs_.open(gt_filename.c_str());
   if(!gt_fs_.is_open())
     LOG(WARNING) << "No groundtruth trajectory found.";
 
   // initializing depth maps file list
-  std::string depth_filename(dataset_dir_ + "/data/depthmaps.txt");
+  std::string depth_filename(dataset_dir_ + "/depthmaps.txt");
   depth_fs_.open(depth_filename.c_str());
   if(!depth_fs_.is_open())
     LOG(WARNING) << "No depthmaps trajectory found.";

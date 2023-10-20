@@ -214,10 +214,12 @@ void fillSegment(
     Segments& keysegs,
     Scores& scores,
     Levels& levels,
+    Gradients & grads,
     FeatureTypes& types,
     OccupandyGrid2D& grid,
     double threshold
 );
+
 
 } // feature_detection_utils
 } // namespace svo

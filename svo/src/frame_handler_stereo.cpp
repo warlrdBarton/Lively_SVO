@@ -70,7 +70,7 @@ void FrameHandlerStereo::addImages(
 
 UpdateResult FrameHandlerStereo::processFirstFrame()
 {
-  if(initializer_->addFrameBundle(new_frames_) == InitResult::kFailure)
+  if(initializer_->addFrameBundle(new_frames_) == InitResult::kFailure)//use stereo initialize
   {
     SVO_ERROR_STREAM("Initialization failed. Not enough triangulated points.");
     return UpdateResult::kDefault;

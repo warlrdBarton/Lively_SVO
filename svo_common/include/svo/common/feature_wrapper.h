@@ -9,6 +9,9 @@ namespace svo {
 class Point;
 using PointPtr = std::shared_ptr<Point>;
 
+class Line;
+using LinePtr = std::shared_ptr<Line>;
+
 class Frame;
 using FramePtr = std::shared_ptr<Frame>;
 
@@ -24,8 +27,58 @@ struct SeedRef
   ~SeedRef() = default;
 };
 
+
+
 /** @todo (MWE)
  */
+
+struct SegmentWrapper{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  FeatureType& type;               
+
+  Eigen::Ref<Segment> segment;
+  Eigen::Ref<BearingVector> s_f;
+  Eigen::Ref<BearingVector> e_f;
+  Eigen::Ref<GradientVector> grad;
+  Score& score;
+  Level& level;
+  LinePtr& line_landmark;
+  SeedRef& seed_ref;
+  int& track_id;
+    SegmentWrapper(
+      FeatureType& _type,
+      Eigen::Ref<Segment> _seg,
+      Eigen::Ref<BearingVector> s_f,
+      Eigen::Ref<BearingVector> e_f,
+      Score& _score,
+      Level& _pyramid_level,
+      GradientVector grad,
+      LinePtr& line_landmark,
+      SeedRef& _seed_ref,
+      int& _track_id)
+    : type(_type)
+    , segment(_seg)
+    , s_f(s_f)
+    , e_f(e_f)
+    , grad(grad)
+    , score(_score)
+    , level(_pyramid_level)
+    , line_landmark(line_landmark)
+    , seed_ref(_seed_ref)
+    , track_id(_track_id)
+  { ; }
+
+  SegmentWrapper() = delete;
+  ~SegmentWrapper() = default;
+
+  //! @todo (MWE) do copy and copy-asignment operators make sense?
+  SegmentWrapper(const SegmentWrapper& other) = default;
+  SegmentWrapper& operator=(const SegmentWrapper& other) = default;
+
+
+};
+
+
 struct FeatureWrapper
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

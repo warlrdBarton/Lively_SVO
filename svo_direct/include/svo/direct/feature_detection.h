@@ -330,6 +330,8 @@ public:
       Segments& seg_vec,
       Scores& len_vec,
       Levels& level_vec,
+      Gradients &grad_vec,
+
       FeatureTypes& types_vec) = 0;
 
   inline void resetGrid()
@@ -358,6 +360,8 @@ public:
       Segments& seg_vec,
       Scores& len_vec,
       Levels& level_vec,
+      Gradients &grad_vec,
+
       FeatureTypes& types_vec) override;
   
   private:

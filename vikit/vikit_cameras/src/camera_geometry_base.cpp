@@ -58,6 +58,21 @@ void CameraGeometryBase::backProject3(
     out_bearing_vectors->col(i) = bearing_vector;
   }
 }
+void CameraGeometryBase::backProject3Segments(
+      const Eigen::Ref<const Eigen::Matrix4Xd>& segments,
+      Eigen::Matrix3Xd* out_bearing_vectors, std::vector<bool>* success) const
+{
+  const int num_segments = segments.cols();
+  CHECK_NOTNULL(out_bearing_vectors)->resize(Eigen::NoChange, num_segments*2);
+  CHECK_NOTNULL(success)->resize(num_segments*2);
+  Eigen::Vector3d bearing_vector_start, bearing_vector_end;
+  for (int i = 0; i < num_segments*2; i+=2) {
+    (*success)[i] = backProject3(segments.col(i/2).head<2>(), &bearing_vector_start);
+    (*success)[i+1] = backProject3(segments.col(i/2).tail<2>(), &bearing_vector_end);
+    out_bearing_vectors->col(i) = bearing_vector_start;
+    out_bearing_vectors->col(i+1) = bearing_vector_end;
+  }
+}
 
 void CameraGeometryBase::setMask(const cv::Mat& mask) {
   CHECK_EQ(height_, mask.rows);

@@ -15,12 +15,20 @@
 namespace svo {
 
 std::atomic<int> PointIdProvider::last_id_ { 0 };
+std::atomic<int> SegmentIdProvider::last_id_ { 0 };
 
 KeypointIdentifier::KeypointIdentifier(const FramePtr& _frame, const size_t _feature_index)
   : frame(_frame)
   , frame_id(_frame->id_)
   , keypoint_index_(_feature_index)
 { ; }
+
+SegmentIdentifier::SegmentIdentifier(const FramePtr& _frame, const size_t _segment_index)
+  : frame(_frame)
+  , frame_id(_frame->id_)
+  , segment_index_(_segment_index)
+{ ; }
+
 
 Point::Point(const Eigen::Vector3d& pos)
   : Point(PointIdProvider::getNewPointId(), pos)
@@ -35,6 +43,21 @@ Point::Point(const int id, const Eigen::Vector3d& pos)
 
 Point::~Point()
 {}
+
+
+Line::Line(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos)
+  : Line::Line(SegmentIdProvider::getNewSegmentId(), spos,epos)
+{ ; }
+
+Line::Line(const int id, const Eigen::Vector3d& spos, const Eigen::Vector3d& epos)
+  : id_(id)
+  , spos_(spos)
+  , epos_(epos)
+{
+  last_projected_kf_id_.fill(-1);
+}
+
+Line::~Line(){}
 
 std::atomic_uint64_t Point::global_map_value_version_ {0u};
 
@@ -54,6 +77,25 @@ void Point::addObservation(const FramePtr& frame, const size_t feature_index)
   else
   {
     CHECK_EQ(it->keypoint_index_, feature_index);
+  }
+}
+
+void Line::addObservation(const FramePtr& frame, const size_t seg_index)
+{
+  CHECK_NOTNULL(frame.get());
+
+  // check that we don't have yet a reference to this frame
+  // TODO(cfo): maybe we should use a std::unordered_map to store the observations.
+  const auto id = frame->id();
+  auto it = std::find_if(obs_.begin(), obs_.end(),
+                         [&](const SegmentIdentifier& i){ return i.frame_id == id; });
+  if(it == obs_.end())
+  {
+    obs_.emplace_back(SegmentIdentifier(frame, seg_index));
+  }
+  else
+  {
+    CHECK_EQ(it->segment_index_, seg_index);
   }
 }
 

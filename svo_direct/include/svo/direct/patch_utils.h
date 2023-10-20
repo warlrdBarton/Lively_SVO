@@ -15,6 +15,7 @@
 namespace svo {
 namespace patch_utils {
 
+
 inline void createPatchFromPatchWithBorder(
     const uint8_t* const patch_with_border,
     const int patch_size,
