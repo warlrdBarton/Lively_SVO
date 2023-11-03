@@ -79,6 +79,21 @@ void Map::safeDeletePoint(const PointPtr& pt)
   pt->obs_.clear();
 }
 
+void Map::safeDeleteLine(const LinePtr& line)
+{
+  // Delete references to mappoints in all keyframes
+  for(const SegmentIdentifier& obs : line->obs_)
+  {
+    if(const FramePtr& frame = obs.frame.lock())
+    {
+      frame->deleteSegmentLandmark(obs.segment_index_);
+    }
+    else
+      SVO_ERROR_STREAM("could not lock weak_ptr<Frame> in Map::safeDeletePoint");
+  }
+  line->obs_.clear();
+}
+
 void Map::addPointToTrash(const PointPtr& pt)
 {
   std::lock_guard<std::mutex> lock(points_to_delete_mutex_);
@@ -108,7 +123,12 @@ void Map::addKeyframe(const FramePtr& new_keyframe, bool temporal_map)
   }
 }
 
-void Map::getOverlapKeyframes(
+
+/// @brief get the history frame whiches project keypoint in current frame
+/// @param
+
+void Map::getOverlapKeyframes
+(
     const FramePtr& frame,
     std::vector<std::pair<FramePtr, double>>* close_kfs) const
 {

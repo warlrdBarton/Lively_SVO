@@ -84,8 +84,11 @@ public:
   Gradients seg_grad_vec_;              ///< Gradient direction of edgelet normal
 
   SeedRefs seg_seed_ref_vec_;           ///< Only for seeds during reprojection
+  SeedStates seg_invmu_sigma2_a_b_vec_; /// not update
   TrackIds seg_track_id_vec_;           ///< ID of every observed 3d point. -1 if no point assigned.
   Bearings seg_f_vec_;                  ///< Bearing Vector
+  std::vector<bool> seg_in_ba_graph_vec_;
+
 
   // segmentLens segment_length_vec_;
   
@@ -134,6 +137,7 @@ public:
 
   /// Delete feature.
   void deleteLandmark(const size_t& feature_index);
+void deleteSegmentLandmark(const size_t& segment_index);
 
   /// Resize the number of features. (NOT THREADSAFE)
   void resizeFeatureStorage(size_t num);
@@ -143,24 +147,41 @@ public:
 
   void clearFeatureStorage();
 
+  void clearSegmentStorage();
+
   /// Copy feature data from another frame.
   void copyFeaturesFrom(const Frame& other);
 
   FeatureWrapper getFeatureWrapper(size_t idx);
   SegmentWrapper getSegmentWrapper(size_t index);
 
-
+bool check_segment_idx_vaild(size_t index);
+bool check_segment_infolist_vaild();
   FeatureWrapper getEmptyFeatureWrapper();
+SegmentWrapper getEmptySegmentWrapper();
 
   /// Get depth at seed.
   inline FloatType getSeedDepth(size_t idx) const {
     return seed::getDepth(invmu_sigma2_a_b_vec_.col(idx));
   }
 
+  inline Eigen::Matrix<FloatType,2,1> getSegmentSeedDepth(size_t idx) const {
+    return Eigen::Matrix<FloatType,2,1>(seed::getDepth(seg_invmu_sigma2_a_b_vec_.col(idx*2)),seed::getDepth(seg_invmu_sigma2_a_b_vec_.col(idx*2+1)));
+  }
+
   /// Get coordinates of seed in frame coordinates.
   inline Position getSeedPosInFrame(size_t idx) const {
     return f_vec_.col(idx) * getSeedDepth(idx);
   }
+
+inline Eigen::Matrix<FloatType, 3, 2> getSegmentSeedPosInFrame(size_t idx) const {
+    Eigen::Matrix<FloatType,2,1> depth = getSegmentSeedDepth(idx);
+    Eigen::Matrix<FloatType, 3, 2> result;
+    result.col(0) = f_vec_.col(idx * 2) * depth[0];
+    result.col(1) = f_vec_.col(idx * 2 + 1) * depth[1];
+    return result;
+}
+
 
   /// Number of features. Not necessarily succesfully tracked ones.
   inline size_t numFeatures() const {
@@ -176,6 +197,10 @@ public:
     return (landmark_vec_.at(i) != nullptr);
   }
 
+    inline bool isValidSegmentLandmark(size_t i) const {
+    return (seg_landmark_vec_.at(i) != nullptr);
+  }
+
   /// Number of successfully tracked features: seeds and actual landmarks.
   inline size_t numTrackedFeatures() const {
     size_t count = 0;
@@ -184,6 +209,17 @@ public:
       if((isValidLandmark(i) && !isFixedLandmark(type_vec_[i]) &&
           !isMapPoint(type_vec_[i]))
          || isCornerEdgeletSeed(type_vec_[i]))
+        ++count;
+    }
+    return count;
+  }
+
+  inline size_t numTrackedSegment() const {
+    size_t count = 0;
+    for(size_t i = 0; i < num_segments_; ++i)
+    {
+      if((isValidSegmentLandmark(i) && !isFixedSegmentLandmark(type_vec_[i]) )
+         || isSegmentSeed(type_vec_[i]))
         ++count;
     }
     return count;
@@ -222,6 +258,17 @@ public:
     for(size_t i = 0; i < num_features_; ++i)
     {
       if(isValidLandmark(i) && isFixedLandmark(type_vec_[i]))
+        ++count;
+    }
+    return count;
+  }
+
+
+  inline size_t numFixedLandmarks() const {
+    size_t count = 0;
+    for(size_t i = 0; i < num_segments_; ++i)
+    {
+      if(isValidSegmentLandmark(i) && isFixedSegmentLandmark(type_vec_[i]))
         ++count;
     }
     return count;

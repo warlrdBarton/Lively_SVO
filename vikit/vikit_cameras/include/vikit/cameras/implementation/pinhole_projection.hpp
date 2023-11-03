@@ -41,7 +41,7 @@ bool PinholeProjection<Distortion>::backProject3(
 }
 
 template<typename Distortion>
-void PinholeProjection<Distortion>::project3(
+void PinholeProjection<Distortion>::project3(// one 3d point in camera frame,through fx and distortion to pixel plane ,get the pixel indexdd
     const Eigen::Ref<const Eigen::Vector3d>& point_3d,
     Eigen::Vector2d* out_keypoint,
     Eigen::Matrix<double, 2, 3>* out_jacobian_point) const

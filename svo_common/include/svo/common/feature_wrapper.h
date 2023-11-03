@@ -44,6 +44,7 @@ struct SegmentWrapper{
   Level& level;
   LinePtr& line_landmark;
   SeedRef& seed_ref;
+  // SeedRef& e_seed_ref;
   int& track_id;
     SegmentWrapper(
       FeatureType& _type,
@@ -54,7 +55,8 @@ struct SegmentWrapper{
       Level& _pyramid_level,
       GradientVector grad,
       LinePtr& line_landmark,
-      SeedRef& _seed_ref,
+      SeedRef& seed_ref,
+      // SeedRef& e_seed_ref,
       int& _track_id)
     : type(_type)
     , segment(_seg)
@@ -64,7 +66,8 @@ struct SegmentWrapper{
     , score(_score)
     , level(_pyramid_level)
     , line_landmark(line_landmark)
-    , seed_ref(_seed_ref)
+    , seed_ref(seed_ref)
+    // , seed_ref(e_seed_ref)
     , track_id(_track_id)
   { ; }
 
@@ -87,7 +90,7 @@ struct FeatureWrapper
   Eigen::Ref<Keypoint> px;          //!< Coordinates in pixels on pyramid level 0.
   Eigen::Ref<BearingVector> f;      //!< Unit-bearing vector of the feature.
   Eigen::Ref<GradientVector> grad;  //!< Dominant gradient direction for edglets, normalized.
-  Score& score;
+  Score& score;                     //!< 
   Level& level;                     //!< Image pyramid level where feature was extracted.
   PointPtr& landmark;
   SeedRef& seed_ref;

@@ -19,7 +19,7 @@
 #include <svo/common/logging.h>
 #include <svo/common/point.h>
 #include <svo/common/camera.h>
-
+#define SEGMENT_ENABLE
 namespace svo {
 
 int Frame::frame_counter_ = 0;
@@ -91,6 +91,11 @@ void Frame::deleteLandmark(const size_t& feature_index)
   landmark_vec_.at(feature_index) = nullptr;
 }
 
+void Frame::deleteSegmentLandmark(const size_t& segment_index)
+{
+  seg_landmark_vec_.at(segment_index) = nullptr;
+}
+
 void Frame::resizeFeatureStorage(size_t num)
 {
   if(static_cast<size_t>(px_vec_.cols()) < num)
@@ -132,6 +137,7 @@ void Frame::resizeSegmentStorage(size_t num)
 
     seg_vec_.conservativeResize(Eigen::NoChange, num);
     seg_f_vec_.conservativeResize(Eigen::NoChange, num*2);
+    seg_invmu_sigma2_a_b_vec_.conservativeResize(Eigen::NoChange, num*2);
     seg_score_vec_.conservativeResize(num);
     seg_grad_vec_.conservativeResize(Eigen::NoChange, num);
     seg_level_vec_.conservativeResize(num);
@@ -140,12 +146,15 @@ void Frame::resizeSegmentStorage(size_t num)
     seg_seed_ref_vec_.resize(num);
     seg_track_id_vec_.conservativeResize(num);
     seg_type_vec_.resize(num, FeatureType::kSegment);
-    
+
+    seg_in_ba_graph_vec_.resize(num, false);
 
     // initial values
     seg_level_vec_.tail(n_new).setZero();
     seg_score_vec_.tail(n_new).setConstant(-1);
     seg_track_id_vec_.tail(n_new).setConstant(-1);
+
+
 
   }
   else if(num < static_cast<size_t>(px_vec_.cols()))
@@ -171,6 +180,22 @@ void Frame::clearFeatureStorage()
   num_features_ = 0;
 }
 
+void Frame::clearSegmentStorage()
+{
+  seg_vec_.resize(Eigen::NoChange, 0);
+  seg_f_vec_.resize(Eigen::NoChange, 0);
+  seg_score_vec_.resize(0);
+  seg_level_vec_.resize(0);
+  seg_grad_vec_.resize(Eigen::NoChange, 0);
+  seg_invmu_sigma2_a_b_vec_.resize(Eigen::NoChange, 0);
+  seg_track_id_vec_.resize(0);
+  seg_type_vec_.clear();
+  seg_landmark_vec_.clear();
+  seg_seed_ref_vec_.clear();
+  seg_in_ba_graph_vec_.clear(); 
+  num_segments_ = 0;
+}
+
 void Frame::copyFeaturesFrom(const Frame& other)
 {
   px_vec_ = other.px_vec_;
@@ -185,6 +210,21 @@ void Frame::copyFeaturesFrom(const Frame& other)
   track_id_vec_ = other.track_id_vec_;
   num_features_ = other.num_features_;
   in_ba_graph_vec_ = other.in_ba_graph_vec_;
+
+  num_segments_=other.num_features_;
+  seg_vec_= other.seg_vec_;
+  seg_f_vec_ = other.seg_f_vec_;
+  seg_score_vec_ = other.seg_score_vec_;
+  seg_level_vec_ = other.seg_level_vec_;
+  seg_grad_vec_ = other.seg_grad_vec_;
+  seg_invmu_sigma2_a_b_vec_ = other.seg_invmu_sigma2_a_b_vec_;
+  seg_track_id_vec_ = other.seg_track_id_vec_;
+  seg_type_vec_ = other.seg_type_vec_;
+  seg_landmark_vec_ = other.seg_landmark_vec_;
+  seg_seed_ref_vec_ = other.seg_seed_ref_vec_;
+  seg_in_ba_graph_vec_ = other.seg_in_ba_graph_vec_;
+  
+
 }
 
 FeatureWrapper Frame::getFeatureWrapper(size_t index)
@@ -196,10 +236,71 @@ FeatureWrapper Frame::getFeatureWrapper(size_t index)
         seed_ref_vec_[index], track_id_vec_(index));
 }
 
+bool Frame::check_segment_infolist_vaild()
+{
+    Eigen::Index len = static_cast<Eigen::Index>(seg_vec_.cols());
+    CHECK(len == seg_vec_.cols() && len * 2 == seg_f_vec_.cols() && len == seg_score_vec_.rows() 
+    && len == seg_level_vec_.rows() && len == seg_grad_vec_.cols() && len == seg_track_id_vec_.size() 
+    && len == static_cast<Eigen::Index>(seg_landmark_vec_.size()) &&
+     len == static_cast<Eigen::Index>(seg_seed_ref_vec_.size()) && len == static_cast<Eigen::Index>(seg_type_vec_.size()))
+    <<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+    return true;
+}
+
+
+bool Frame::check_segment_idx_vaild(size_t index)
+{
+  CHECK_LT(index, static_cast<size_t>(seg_vec_.cols()))<<index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_vec_.cols()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index*2<static_cast<size_t> (seg_f_vec_.cols()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_grad_vec_.cols()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_score_vec_.rows()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_level_vec_.rows()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_track_id_vec_.size()))
+  << index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_landmark_vec_.size()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_seed_ref_vec_.size()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  CHECK(index<static_cast<size_t> (seg_type_vec_.size()))<< index<<" "<<seg_vec_.cols()<<" "<<seg_f_vec_.cols()<<" "
+  <<seg_score_vec_.rows()<<" "<<seg_level_vec_.rows()<<" "<<seg_grad_vec_.cols()<<" "
+  <<seg_track_id_vec_.size()<<" "<<seg_landmark_vec_.size()
+  <<" "<<seg_seed_ref_vec_.size()<<" "<<seg_type_vec_.size();
+  return 1;
+}
+
 
 SegmentWrapper Frame::getSegmentWrapper(size_t index)
 {
-  CHECK_LT(index, static_cast<size_t>(seg_vec_.cols()));
+  CHECK_LT(index, static_cast<size_t>(seg_vec_.cols()))<<index<<" "<<seg_vec_.cols();
   return SegmentWrapper(seg_type_vec_[index], seg_vec_.col(index), seg_f_vec_.col(index*2),seg_f_vec_.col(index*2+1),
         seg_score_vec_(index), seg_level_vec_(index), seg_grad_vec_.col(index), seg_landmark_vec_[index],
         seg_seed_ref_vec_[index], seg_track_id_vec_(index));
@@ -208,6 +309,11 @@ SegmentWrapper Frame::getSegmentWrapper(size_t index)
 FeatureWrapper Frame::getEmptyFeatureWrapper()
 {
   return getFeatureWrapper(num_features_);
+}
+
+SegmentWrapper Frame::getEmptySegmentWrapper()
+{
+  return getSegmentWrapper(num_segments_);
 }
 
 void Frame::setKeyPoints()
@@ -226,7 +332,6 @@ void Frame::setKeyPoints()
     // center
     if(key_pts_[0].first == -1)
       key_pts_[0] = std::make_pair(i, landmark_vec_[i]->pos_);
-
     else if(std::max(std::fabs(u-cu), std::fabs(v-cv))
             < std::max(std::fabs(px_vec_(0, key_pts_[0].first) - cu),
                        std::fabs(px_vec_(1, key_pts_[0].first) - cv)))
@@ -433,9 +538,9 @@ bool getSceneDepth(const FramePtr& frame, double& depth_median, double& depth_mi
   depth_vec.reserve(frame->num_features_);
   depth_min = std::numeric_limits<double>::max();
   depth_max = 0;
-  double depth = 0;
+  double depth = 0,depth_s=0,depth_e=0;
   const Position ref_pos = frame->pos();
-  for(size_t i = 0; i < frame->num_features_; ++i)
+  for(size_t i = 0; i < frame->num_features_; ++i)// iterate over every point within the image 
   {
     if(frame->landmark_vec_[i])
     {
@@ -457,6 +562,38 @@ bool getSceneDepth(const FramePtr& frame, double& depth_median, double& depth_mi
     depth_min = std::min(depth, depth_min);
     depth_max = std::max(depth, depth_max);
   }
+
+  #ifdef SEGMENT_ENABLE
+    for(size_t i = 0; i < frame->num_segments_; ++i)// iterate over every point within the image 
+  {
+    if(frame->seg_landmark_vec_[i])
+    {
+      depth_s = (frame->T_cam_world()*frame->seg_landmark_vec_[i]->spos_).norm();
+      depth_e = (frame->T_cam_world()*frame->seg_landmark_vec_[i]->epos_).norm();
+    }
+    else if(frame->seg_seed_ref_vec_[i].keyframe)//could not find seed ref 
+    {
+      const SeedRef& seed_ref = frame->seg_seed_ref_vec_[i];//get line ref seed 
+       const Position pos_s = seed_ref.keyframe->T_world_cam() *
+          seed_ref.keyframe->getSegmentSeedPosInFrame(seed_ref.seed_id).col(0);
+               const Position pos_e = seed_ref.keyframe->T_world_cam() *
+          seed_ref.keyframe->getSegmentSeedPosInFrame(seed_ref.seed_id).col(1);
+      depth_s = (pos_s.col(0) - ref_pos).norm();
+      depth_e = (pos_e.col(1) - ref_pos).norm();
+    }
+    else
+    {
+      continue;
+    }
+
+    depth_vec.push_back(depth_s);
+    depth_vec.push_back(depth_e);
+    depth_min = std::min(depth_s, depth_min);
+    depth_min = std::min(depth_e, depth_min);
+    depth_max = std::max(depth_s, depth_max);
+    depth_max = std::max(depth_e, depth_max);
+  }
+#endif
   if(depth_vec.empty())
   {
     SVO_WARN_STREAM("Cannot set scene depth. Frame has no point-observations!");

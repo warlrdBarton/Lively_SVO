@@ -566,7 +566,7 @@ void AllPixelsDetector::detect(
           segs, // same level with corner
           FeatureType::kSegment,
           mask,
-          options_.max_segment_num,
+          max_n_features,
           seg_vec,
           score_vec,
           level_vec,

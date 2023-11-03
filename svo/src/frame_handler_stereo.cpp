@@ -104,10 +104,16 @@ UpdateResult FrameHandlerStereo::processFrame()
 
   // STEP 2: Map Reprojection & Feature Align
   n_tracked_features = projectMapInFrame();
+
+  // STEP 2.5: Map Reprojection & Segment 
+  size_t n_tracked_segments = projectMapInFrameAddSegment();
+
   if(n_tracked_features < options_.quality_min_fts)
   {
     return makeKeyframe(); // force stereo triangulation to recover
   }
+
+
 
   // STEP 3: Pose & Structure Optimization
   if(bundle_adjustment_type_!=BundleAdjustmentType::kCeres)
@@ -132,7 +138,14 @@ UpdateResult FrameHandlerStereo::processFrame()
   if(!need_new_kf_(new_frames_->at(0)->T_f_w_))
   {
     for(size_t i=0; i<new_frames_->size(); ++i)
+    {
+      // CHECK( 0!=overlap_kfs_.at(i)[0]->seg_track_id_vec_.size())<<overlap_kfs_.at(i)[0]->seg_track_id_vec_.size()<<"img0";
+      // CHECK( 0!=overlap_kfs_.at(i)[1]->seg_track_id_vec_.size())<<overlap_kfs_.at(i)[1]->seg_track_id_vec_.size()<<"img1";
+      // overlap_kfs_.at(i)[0]->check_segment_infolist_vaild();
+      // overlap_kfs_.at(i)[1]->check_segment_infolist_vaild();
       depth_filter_->updateSeeds(overlap_kfs_.at(i), new_frames_->at(i));
+
+    }
     return UpdateResult::kDefault;
   }
   SVO_DEBUG_STREAM("New keyframe selected.");

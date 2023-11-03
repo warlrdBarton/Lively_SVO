@@ -52,6 +52,7 @@ public:
 
   /// Safely remove a point from a map
   void safeDeletePoint(const PointPtr& pt);
+void safeDeleteLine(const LinePtr& line);
 
   /// Moves the point to the trash bin, cleared after all reprojectors have done their job
   void addPointToTrash(const PointPtr& pt);

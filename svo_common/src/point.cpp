@@ -59,6 +59,60 @@ Line::Line(const int id, const Eigen::Vector3d& spos, const Eigen::Vector3d& epo
 
 Line::~Line(){}
 
+
+bool Line::getCloseViewObs(
+    const Eigen::Vector3d& framepos,
+    FramePtr& ref_frame,
+    size_t& ref_segment_index) const
+{
+  double min_cos_angle = 0.0;
+  Eigen::Vector3d obs_dir_s(framepos - spos_);
+  Eigen::Vector3d obs_dir_e(framepos - epos_);
+  obs_dir_s.normalize();
+  obs_dir_e.normalize();
+
+  //
+  //  TODO: For edgelets, find another view that reduces an epipolar line that
+  //        is orthogonal to the gradient!
+  //
+
+  // TODO: get frame with same point of view AND same pyramid level!
+  for(const SegmentIdentifier& obs : obs_)
+  {
+    if(FramePtr frame = obs.frame.lock())
+    {
+      Eigen::Vector3d dir_s(frame->pos() - spos_);
+      Eigen::Vector3d dir_e(frame->pos() - epos_);
+      dir_s.normalize();
+      dir_e.normalize();
+      const double cos_angle_s = obs_dir_s.dot(dir_s);
+      const double cos_angle_e = obs_dir_e.dot(dir_e);
+      if(cos_angle_s+cos_angle_e > min_cos_angle)
+      {
+        min_cos_angle = cos_angle_s+cos_angle_e;
+        ref_frame = frame;
+        ref_segment_index = obs.segment_index_;
+      }
+    }
+    else
+    {
+      SVO_DEBUG_STREAM("could not unlock weak_ptr<Frame> in Point::getCloseViewObs"
+                       <<", Point-ID = " << id_
+                       <<", Point-nObs = " << obs_.size()
+                       <<", Frame-ID = " << obs.frame_id
+                       <<", Feature-ID = " << obs.segment_index_
+                       <<", Point-Type = " << type_);
+      return false;
+    }
+  }
+  if(min_cos_angle < 0.4) // assume that observations larger than 60° are useless
+  {
+    SVO_DEBUG_STREAM("getCloseViewObs(): obs is from too far away: " << min_cos_angle);
+    return false;
+  }
+  return true;
+}
+
 std::atomic_uint64_t Point::global_map_value_version_ {0u};
 
 void Point::addObservation(const FramePtr& frame, const size_t feature_index)
@@ -169,6 +223,8 @@ bool Point::getCloseViewObs(
   }
   return true;
 }
+
+
 
 double Point::getTriangulationParallax() const
 {

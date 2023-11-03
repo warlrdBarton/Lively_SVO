@@ -33,7 +33,7 @@ using Scores = Eigen::Matrix<FloatType, Eigen::Dynamic, 1, Eigen::ColMajor>;
 using Levels = Eigen::Matrix<Level, Eigen::Dynamic, 1, Eigen::ColMajor>;
 using InlierMask = Eigen::Matrix<bool, Eigen::Dynamic, 1, Eigen::ColMajor>;
 using SeedStates = Eigen::Matrix<FloatType, 4, Eigen::Dynamic, Eigen::ColMajor>;
-using TrackIds = Eigen::VectorXi;
+using TrackIds = Eigen::Matrix<int, Eigen::Dynamic, 1, Eigen::ColMajor>;
 using Segments =Eigen::Matrix<FloatType,4, Eigen::Dynamic,  Eigen::ColMajor>;
 using Lengths = Eigen::Matrix<FloatType,1, Eigen::Dynamic,  Eigen::ColMajor>;
 
@@ -75,7 +75,9 @@ enum class FeatureType : uint8_t
   kMapPoint = 10,
   kSegment=11,
   kFixedLandmark = 12,
-  kOutlier = 13
+  kFixedSegmentLandmark = 13,
+  kOutlier = 14,
+  KSegmentOutlier=15
   
 };
 
@@ -95,11 +97,24 @@ inline bool isCornerEdgeletSeed(const FeatureType& t)
           || t == FeatureType::kCornerSeed);
 }
 
+inline bool isSegmentSeed(const FeatureType& t)
+{
+  return (t == FeatureType::kSegmentSeedConverged
+          || t == FeatureType::kSegmentSeed);
+}
+
+
 inline bool isConvergedCornerEdgeletSeed(const FeatureType& t)
 {
   return (t == FeatureType::kEdgeletSeedConverged
           || t == FeatureType::kCornerSeedConverged);
 }
+
+inline bool isConvergedSegmentSeed(const FeatureType& t)
+{
+  return (t == FeatureType::kSegmentSeedConverged);
+}
+
 
 inline bool isConvergedMapPointSeed(const FeatureType& t)
 {
@@ -112,6 +127,10 @@ inline bool isUnconvergedCornerEdgeletSeed(const FeatureType& t)
           || t == FeatureType::kCornerSeed);
 }
 
+inline bool isUnconvergedSegmentSeed(const FeatureType& t)
+{
+  return (t == FeatureType::kSegmentSeed);
+}
 inline bool isUnconvergedMapPointSeed(const FeatureType& t)
 {
   return (t == FeatureType::kMapPointSeed);
@@ -154,6 +173,16 @@ inline bool isUnconvergedSeed(const FeatureType& t)
 inline bool isFixedLandmark(const FeatureType& t)
 {
   return t == FeatureType::kFixedLandmark;
+}
+
+inline bool isFixedSegmentLandmark(const FeatureType& t)
+{
+  return t == FeatureType::kFixedSegmentLandmark;
+}
+
+inline bool isSegment(const FeatureType& t)
+{
+  return t== FeatureType::kSegment|| t==FeatureType::kSegmentSeed || t==FeatureType::kSegmentSeedConverged || t==FeatureType::kFixedSegmentLandmark;
 }
 
 inline std::string str(const FeatureType& type)

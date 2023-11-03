@@ -35,7 +35,7 @@ Matcher::MatchResult Matcher::findMatchDirect(
     const FloatType& ref_depth,
     Keypoint& px_cur)
 {
-  Eigen::Vector2i pxi = ref_ftr.px.cast<int>()/(1<<ref_ftr.level);
+  Eigen::Vector2i pxi = ref_ftr.px.cast<int>()/(1<<ref_ftr.level);//get the pixel in corresponding level
   int boundary = kHalfPatchSize+2;
   if(pxi[0] < boundary
      || pxi[1] < boundary
@@ -47,7 +47,7 @@ Matcher::MatchResult Matcher::findMatchDirect(
   warp::getWarpMatrixAffine(
       ref_frame.cam_, cur_frame.cam_, ref_ftr.px, ref_ftr.f, ref_depth,
       cur_frame.T_cam_world() * ref_frame.T_world_cam(), ref_ftr.level, &A_cur_ref_);
-  search_level_ = warp::getBestSearchLevel(A_cur_ref_, ref_frame.img_pyr_.size()-1);
+  search_level_ = warp::getBestSearchLevel(A_cur_ref_, ref_frame.img_pyr_.size()-1);//get the affine from rotate
 /*
   if(pt.normal_set_)
   {
@@ -89,7 +89,7 @@ Matcher::MatchResult Matcher::findMatchDirect(
   //bool success = false;
   if(isEdgelet(ref_ftr.type))
   {
-    GradientVector dir_cur(A_cur_ref_ * ref_ftr.grad);
+    GradientVector dir_cur(A_cur_ref_ * ref_ftr.grad);// compute rje
     dir_cur.normalize();
     if(feature_alignment::align1D(
          cur_frame.img_pyr_[search_level_], dir_cur, patch_with_border_,
@@ -139,6 +139,151 @@ Matcher::MatchResult Matcher::findMatchDirect(
   }
   return MatchResult::kFailAlignment;
 }
+
+
+Matcher::MatchResult Matcher::findMatchDirectSegmentEndpoint(
+    const Frame& ref_frame,
+    const Frame& cur_frame,
+    const Eigen::Ref<Keypoint> px_ref,
+    const Eigen::Ref<BearingVector> f_ref,
+    const Eigen::Ref<Eigen::Matrix<FloatType,2,1>> grad_ref, 
+    const int ref_level,
+    const FeatureType & type_ref,
+    const FloatType& ref_depth,
+    Eigen::Ref<Keypoint> px_cur)
+{
+  Eigen::Matrix<FloatType,3,1> pos_ref=f_ref*ref_depth;
+  Eigen::Vector2i pxi = px_ref.cast<int>()/(1<<ref_level);//get the pixel in corresponding level
+  int boundary = kHalfPatchSize+2;
+  if(pxi[0] < boundary
+     || pxi[1] < boundary
+     || pxi[0] >= static_cast<int>(ref_frame.cam()->imageWidth()/(1<<ref_level))-boundary
+     || pxi[1] >= static_cast<int>(ref_frame.cam()->imageHeight()/(1<<ref_level))-boundary)
+    return MatchResult::kFailVisibility;
+
+  // warp affine
+  warp::getWarpMatrixAffine(
+      ref_frame.cam_, cur_frame.cam_, px_ref, f_ref, ref_depth,
+      cur_frame.T_cam_world() * ref_frame.T_world_cam(), ref_level, &A_cur_ref_);
+  search_level_ = warp::getBestSearchLevel(A_cur_ref_, ref_frame.img_pyr_.size()-1);//get the affine from rotate
+
+  if(options_.use_affine_warp_)
+  {
+    if(!warp::warpAffine(A_cur_ref_, ref_frame.img_pyr_[ref_level], px_ref,
+                         ref_level, search_level_, kHalfPatchSize+1, patch_with_border_))
+      return MatchResult::kFailWarp;
+  }
+  else
+  {
+    // pixelwise warp:
+    // TODO(zzc): currently using the search level from affine, good enough?
+    if(!warp::warpPixelwise(cur_frame, ref_frame,pos_ref ,px_ref,
+                           ref_level, search_level_, kHalfPatchSize+1, patch_with_border_))
+      return MatchResult::kFailWarp;
+
+  }
+  patch_utils::createPatchFromPatchWithBorder(
+        patch_with_border_, kPatchSize, patch_);
+
+  // px_cur should be set
+  Keypoint px_scaled(px_cur/(1<<search_level_));
+  Keypoint px_scaled_start(px_scaled);
+
+  //bool success = false;
+  if(isEdgelet(type_ref))
+  {
+    GradientVector dir_cur(A_cur_ref_ * grad_ref);// compute rje
+    dir_cur.normalize();
+    if(feature_alignment::align1D(
+         cur_frame.img_pyr_[search_level_], dir_cur, patch_with_border_,
+         patch_, options_.align_max_iter,
+         options_.affine_est_offset_, options_.affine_est_gain_,
+         &px_scaled, &h_inv_))
+    {
+      if ((px_scaled - px_scaled_start).norm() > 
+          options_.max_patch_diff_ratio * kPatchSize)
+      {
+        return MatchResult::kFailTooFar;
+      }
+      px_cur = px_scaled * (1<<search_level_);
+      // set member variables with results (used in reprojector)
+      px_cur_ = px_cur;
+      cur_frame.cam()->backProject3(px_cur_, &f_cur_);
+      f_cur_.normalize();
+      return MatchResult::kSuccess;
+    }
+  }
+  else
+  {
+    std::vector<Eigen::Vector2f>* last_fail_steps = nullptr;
+    bool res = feature_alignment::align2D(
+          cur_frame.img_pyr_[search_level_], patch_with_border_, patch_,
+          options_.align_max_iter,
+          options_.affine_est_offset_, options_.affine_est_gain_,
+          px_scaled, false, last_fail_steps);
+    if(res)
+    {
+      if ((px_scaled - px_scaled_start).norm() > 
+          options_.max_patch_diff_ratio * kPatchSize)
+      {
+        return MatchResult::kFailTooFar;
+      }
+      px_cur = px_scaled * (1<<search_level_);
+      // set member variables with results (used in reprojector)
+      px_cur_ = px_cur;
+      cur_frame.cam()->backProject3(px_cur_, &f_cur_);
+      f_cur_.normalize();
+      return MatchResult::kSuccess;
+    }
+    else
+    {
+      VLOG(300) << "NOT CONVERGED: search level " << search_level_;
+    }
+  }
+  return MatchResult::kFailAlignment;
+}
+
+
+std::vector< Matcher::MatchResult> Matcher::findMatchDirectSegment(
+    const Frame& ref_frame,
+    const Frame& cur_frame,
+    const SegmentWrapper& ref_ftr,
+    const FloatType& ref_depth_s,
+    const FloatType& ref_depth_e,
+    Eigen::Ref<Keypoint> px_cur_s,
+    Eigen::Ref<Keypoint> px_cur_e,
+    Eigen::Ref<BearingVector> s_f_cur,
+    Eigen::Ref<BearingVector> e_f_cur
+    )
+{
+
+  Matcher::MatchResult res_s= Matcher::findMatchDirectSegmentEndpoint(
+     ref_frame,
+     cur_frame,
+    ref_ftr.segment.head<2>(),
+    ref_ftr.s_f,
+    ref_ftr.grad,
+    ref_ftr.level,
+    ref_ftr.type,
+    ref_depth_s,
+     px_cur_s);
+  s_f_cur=f_cur_;
+     
+  Matcher::MatchResult res_e= Matcher::findMatchDirectSegmentEndpoint(
+     ref_frame,
+     cur_frame,
+    ref_ftr.segment.tail<2>(),
+    ref_ftr.e_f,
+    ref_ftr.grad,
+    ref_ftr.level,
+    ref_ftr.type,
+    ref_depth_e,
+     px_cur_e);
+  e_f_cur=f_cur_;
+
+    return {res_s,res_e};
+}
+
 
 Matcher::MatchResult Matcher::findEpipolarMatchDirect(
     const Frame& ref_frame,
@@ -644,7 +789,7 @@ Matcher::MatchResult depthFromTriangulation(
     const Transformation& T_search_ref,
     const Eigen::Vector3d& f_ref,
     const Eigen::Vector3d& f_cur,
-    double* depth)
+    double* depth)//get the reference frame deptj
 {
   Eigen::Matrix<double,3,2> A; A << T_search_ref.getRotation().rotate(f_ref), f_cur;
   const Eigen::Matrix2d AtA = A.transpose()*A;

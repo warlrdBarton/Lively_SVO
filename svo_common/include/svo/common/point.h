@@ -116,22 +116,22 @@ public:
     TYPE_ELSED_SEED,
     TYPE_ELSED
   };
-  static int                  point_counter_;           //!< Counts the number of created points. Used to set the unique id.
-  int                         id_;                      //!< Unique ID of the point.
-  Eigen::Vector3d             spos_;                    //!< 3d pos of the start point in the world coordinate frame.
-  Eigen::Vector3d             epos_;                    //!< 3d pos of the end point in the world coordinate frame.
-  Eigen::Vector3d             normal_;                  //!< Surface normal at point.
+  static int                  segment_counter_;           //!< Counts the number of created segments. Used to set the unique id.
+  int                         id_;                      //!< Unique ID of the segment.
+  Eigen::Vector3d             spos_;                    //!< 3d pos of the start segment in the world coordinate frame.
+  Eigen::Vector3d             epos_;                    //!< 3d pos of the end segment in the world coordinate frame.
+  Eigen::Vector3d             normal_;                  //!< Surface normal at segment.
   Eigen::Matrix3d             normal_information_;      //!< Inverse covariance matrix of normal estimation.
   bool                        normal_set_;              //!< Flag whether the surface normal was estimated or not.
-  SegmentIdentifierList      obs_;                     //!< References to keyframes which observe the point.
+  SegmentIdentifierList      obs_;                     //!< References to keyframes which observe the segment.
   size_t                      n_obs_;                   //!< Number of obervations: Keyframes AND successful reprojections in intermediate frames.
-  // g2oPoint*                   v_pt_;                    //!< Temporary pointer to the point-vertex in g2o during bundle adjustment.
+  // g2osegment*                   v_pt_;                    //!< Temporary segmenter to the segment-vertex in g2o during bundle adjustment.
   int                         last_published_ts_;       //!< Timestamp of last publishing.
   std::array<int, 8>          last_projected_kf_id_;    //!< Flag for the reprojection: don't reproject a pt twice.
-  SegmentType                   type_;                    //!< Quality of the point.
-  int                         n_failed_reproj_;         //!< Number of failed reprojections. Used to assess the quality of the point.
-  int                         n_succeeded_reproj_;      //!< Number of succeeded reprojections. Used to assess the quality of the point.
-  int                         last_structure_optim_;    //!< Timestamp of last point optimization
+  SegmentType                   type_;                    //!< Quality of the segment.
+  int                         n_failed_reproj_;         //!< Number of failed reprojections. Used to assess the quality of the segment.
+  int                         n_succeeded_reproj_;      //!< Number of succeeded reprojections. Used to assess the quality of the segment.
+  int                         last_structure_optim_;    //!< Timestamp of last segment optimization
 
   Line(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos);
 
@@ -152,7 +152,12 @@ public:
 
   /// Get Frame with similar viewpoint.
   // bool getCloseViewObs(const Eigen::Vector3d& pos, Feature*& obs) const;
-
+  
+  bool getCloseViewObs(
+    const Eigen::Vector3d& framepos,
+    FramePtr& ref_frame,
+    size_t& ref_segment_index) const;
+  
   /// Get number of observations.
   inline size_t nRefs() const { return obs_.size(); }
   

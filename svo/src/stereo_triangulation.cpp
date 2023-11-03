@@ -84,6 +84,7 @@ namespace svo
       const long n_seg_old = static_cast<long>(frame0->numSegments());
       const long n_seg_new = static_cast<long>(new_seg.cols());
       frame0->resizeSegmentStorage(n_seg_old + static_cast<size_t>(n_seg_new));
+      // frame0->check_segment_infolist_vaild();
       frame0->seg_vec_.middleCols(n_seg_old, n_seg_new) = new_seg;
       frame0->seg_f_vec_.middleCols(n_seg_old * 2, n_seg_new * 2) = new_seg_f; // note add 2 time segment num
       if (new_seg.cols() == 0)
@@ -104,6 +105,7 @@ namespace svo
     const long n_new = new_px.cols();
     frame0->resizeFeatureStorage(
         frame0->num_features_ + static_cast<size_t>(n_new));
+    
     frame0->px_vec_.middleCols(n_old, n_new) = new_px;
     frame0->f_vec_.middleCols(n_old, n_new) = new_f;
     frame0->grad_vec_.middleCols(n_old, n_new) = new_grads;
@@ -141,6 +143,7 @@ namespace svo
     if (frame1->num_segments_ + n_desired_segment > frame1->seg_landmark_vec_.size())
     {
       frame1->resizeSegmentStorage(frame1->num_segments_ + n_desired_segment);
+      // frame1->check_segment_infolist_vaild();
     }
 
 #endif
@@ -227,6 +230,7 @@ namespace svo
         LinePtr new_seg = std::make_shared<Line>(xyz_world_s, xyz_world_e);
 
         frame0->seg_landmark_vec_[i_ref] = new_seg;
+        CHECK(new_seg->id()>-1)<<"seg_track_id_vec_ is not set";
         frame0->seg_track_id_vec_(static_cast<int>(i_ref)) = new_seg->id(); // track id is
         new_seg->addObservation(frame0, i_ref);
 

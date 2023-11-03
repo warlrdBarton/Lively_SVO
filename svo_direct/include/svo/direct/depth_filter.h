@@ -23,6 +23,10 @@ class AbstractDetector;
 typedef std::shared_ptr<AbstractDetector> DetectorPtr;
 struct DetectorOptions;
 
+class SegmentAbstractDetector;
+typedef std::shared_ptr<SegmentAbstractDetector> SegmentDetectorPtr;
+struct SegmentDetectorOptions;
+
 /// Depth-filter config parameters
 struct DepthFilterOptions
 {
@@ -59,7 +63,7 @@ struct DepthFilterOptions
 
   /// Restrict number of features per frame.
   size_t max_n_seeds_per_frame = 200;
-
+  size_t max_n_seg_seeds_per_frame =50;
   size_t max_map_seeds_per_frame = 200;
 
   /// use affine model to compensate for brightness change
@@ -81,7 +85,7 @@ protected:
   /// or to initialize new seeds in the frame
   struct Job
   {
-    enum Type { UPDATE, SEED_INIT } type;
+    enum Type { UPDATE, SEED_INIT ,UPDATE_SEGMENT,SEED_INIT_SEGMENT} type;
     FramePtr cur_frame;
     FramePtr ref_frame;
     size_t ref_frame_seed_index;
@@ -99,10 +103,21 @@ protected:
       , ref_frame(_ref_frame)
       , ref_frame_seed_index(_ref_index)
     {}
+    Job(const FramePtr& _cur_frame, const FramePtr& _ref_frame, const size_t _ref_index,Type type)
+      : type(type)
+      , cur_frame(_cur_frame)
+      , ref_frame(_ref_frame)
+      , ref_frame_seed_index(_ref_index)
+    {}
 
     /// Constructor for seed initialization
     Job(const FramePtr& f, double min_d, double max_d, double mean_d)
       : type(SEED_INIT), cur_frame(f), ref_frame(nullptr)
+      , min_depth(min_d), max_depth(max_d), mean_depth(mean_d)
+    {}
+
+        Job(const FramePtr& f, double min_d, double max_d, double mean_d,Type type)
+      : type(type), cur_frame(f), ref_frame(nullptr)
       , min_depth(min_d), max_depth(max_d), mean_depth(mean_d)
     {}
   };
@@ -122,7 +137,11 @@ public:
       const DepthFilterOptions& options,
       const DetectorOptions& detector,
       const std::shared_ptr<CameraBundle>& cams);
-
+  DepthFilter(
+      const DepthFilterOptions &options,
+      const DetectorOptions &detector_options,
+      const SegmentDetectorOptions &seg_detector_options,
+      const std::shared_ptr<CameraBundle> &cams);
   /// Constructor for REMODE-CPU
   DepthFilter(
       const DepthFilterOptions& options);
@@ -163,6 +182,8 @@ public:
   DetectorPtr feature_detector_;
   DetectorPtr sec_feature_detector_; // for extra points used for loop closing
 
+  SegmentDetectorPtr segment_detector_;
+
 protected:
   mutex_t jobs_mut_;
   JobQueue jobs_;
@@ -186,6 +207,17 @@ void initializeSeeds(
     const float max_depth,
     const float mean_depth);
 
+
+void initializeSeeds(
+    const FramePtr& frame,
+    const DetectorPtr& feature_detector,
+    const SegmentDetectorPtr& seg_feature_detector,
+    const size_t max_n_seeds,
+    const size_t max_n_seg_seeds,
+    const float depth_min,
+    const float depth_max,
+    const float depth_mean);
+
 /// Update Seed
 bool updateSeed(
     const Frame& cur_frame,
@@ -197,6 +229,24 @@ bool updateSeed(
     const bool check_convergence = false,
     const bool use_vogiatzis_update = true);
 
+
+      void initializeSegmentSeeds(
+          const FramePtr &frame,
+          const SegmentDetectorPtr &seg_feature_detector,
+          const size_t max_n_seg_seeds,
+          const float depth_min,
+          const float depth_max,
+          const float depth_mean);
+
+      bool updateSegmentSeed(
+          const Frame &cur_frame,
+          Frame &ref_frame,
+          const size_t &seed_index,
+          Matcher &matcher,
+          const FloatType sigma2_convergence_threshold,
+          const bool check_visibility= true,
+    const bool check_convergence = false,
+    const bool use_vogiatzis_update = true);
 bool updateFilterVogiatzis(
     const FloatType z,
     const FloatType tau2,

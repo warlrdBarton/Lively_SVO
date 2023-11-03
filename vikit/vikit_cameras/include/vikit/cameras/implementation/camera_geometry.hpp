@@ -25,6 +25,13 @@ bool CameraGeometry<Projection>::backProject3(
   return projection_.backProject3(keypoint, out_point_3d);
 }
 
+
+/// @brief let 3d piont project into 2d point and record the Derivative of pixel offset to 3d point
+/// @tparam Projection 
+/// @param point_3d 
+/// @param out_keypoint 
+/// @param out_jacobian_point 
+/// @return 
 template<typename Projection>
 const ProjectionResult CameraGeometry<Projection>::project3(
       const Eigen::Ref<const Eigen::Vector3d>& point_3d,

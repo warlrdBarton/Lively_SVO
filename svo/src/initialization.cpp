@@ -455,8 +455,9 @@ InitResult StereoInit::addFrameBundle(
            << "FRAME 2" << std::endl << frames->at(1)->T_cam_world();
 
   stereo_->compute(frames->at(0), frames->at(1));
-  if(frames->at(0)->numLandmarks() < options_.init_min_features)
+  if(frames->at(0)->numLandmarks() < options_.init_min_features && frames->at(0)->numSegmentLandmarks()<0)
     return InitResult::kFailure;
+  
   return InitResult::kSuccess;
 }
 

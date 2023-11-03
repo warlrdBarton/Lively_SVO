@@ -464,6 +464,7 @@ protected:
   size_t sparseImageAlignment();
 
   size_t projectMapInFrame();
+size_t projectMapInFrameAddSegment();
 
   size_t optimizePose();
 

@@ -39,6 +39,8 @@
 #include "svo/imu_handler.h"
 #include "svo/pose_optimizer.h"
 
+
+#define SEGMENT_ENABLE
 namespace
 {
 inline double distanceFirstTwoKeyframes(svo::Map& map)
@@ -143,7 +145,7 @@ FrameHandlerBase::FrameHandlerBase(const BaseOptions& base_options, const Reproj
   SegmentDetectorOptions segment_detector_options ;
   //detector_options2.detector_type = DetectorType::kGridGrad;
 
-  depth_filter_.reset(new DepthFilter(depthfilter_options, detector_options2, cams_));
+  depth_filter_.reset(new DepthFilter(depthfilter_options, detector_options2,segment_detector_options, cams_));
   initializer_ = initialization_utils::makeInitializer(init_options, tracker_options, detector_options,segment_detector_options, cams_);
   overlap_kfs_.resize(cams_->getNumCameras());
 
@@ -636,7 +638,7 @@ size_t FrameHandlerBase::sparseImageAlignment()
 
     sparse_img_align_->setWeightedPrior(T_newimu_lastimu_prior_, 0.0, 0.0,
                                         options_.img_align_prior_lambda_rot,
-                                        prior_trans, 0.0, 0.0);
+                                        prior_trans, 0.0, 0.0);// cause the preintergte
   }
   sparse_img_align_->setMaxNumFeaturesToAlign(options_.img_align_max_num_features);
   size_t img_align_n_tracked = sparse_img_align_->run(last_frames_, new_frames_);
@@ -666,7 +668,7 @@ size_t FrameHandlerBase::projectMapInFrame()
     map_->getClosestNKeyframesWithOverlap(
           new_frames_->at(camera_idx),
           cur_reprojector->options_.max_n_kfs,
-          &overlap_kfs_.at(camera_idx));//get nth close frame  
+          &overlap_kfs_.at(camera_idx));//get nth close frame   in same camera 
 #ifdef SVO_GLOBAL_MAP
     if (!isInRecovery() &&
         cur_reprojector->options_.use_kfs_from_global_map && global_map_)
@@ -682,19 +684,24 @@ size_t FrameHandlerBase::projectMapInFrame()
             std::make_move_iterator(overlap_kfs_global.end()));
     }
 #endif
+
   }
 
   std::vector<std::vector<PointPtr>> trash_points;
   trash_points.resize(cams_->numCameras());
+
+
+
   if (options_.use_async_reprojectors && cams_->numCameras() > 1)
   {
     // start reprojection workers
-    std::vector<std::future<void>> reprojector_workers;
-    for (size_t camera_idx = 0; camera_idx < cams_->numCameras(); ++camera_idx)
+    std::vector<std::future<void>> reprojector_workers;// start async working
+    for (size_t camera_idx = 0; camera_idx < cams_->numCameras(); ++camera_idx)//as for the num of camera 
     {
       auto func = std::bind(&Reprojector::reprojectFrames, reprojectors_.at(camera_idx).get(),
                             new_frames_->at(camera_idx), overlap_kfs_.at(camera_idx), trash_points.at(camera_idx));
       reprojector_workers.push_back(std::async(std::launch::async, func));
+
     }
 
     // make sure all of them are finished
@@ -708,13 +715,14 @@ size_t FrameHandlerBase::projectMapInFrame()
       reprojectors_.at(camera_idx)->reprojectFrames(
             new_frames_->at(camera_idx), overlap_kfs_.at(camera_idx),
             trash_points.at(camera_idx));
+
     }
   }
 
   // Effectively clear the points that were discarded by the reprojectors
   for (auto point_vec : trash_points)
     for (auto point : point_vec)
-      map_->safeDeletePoint(point);
+      map_->safeDeletePoint(point);// could be deleted which points was invisible
 
   // Count the total number of trials and matches for all reprojectors
   Reprojector::Statistics cumul_stats_;
@@ -749,6 +757,97 @@ size_t FrameHandlerBase::projectMapInFrame()
 
   return n_total_ftrs;
 }
+
+
+size_t FrameHandlerBase::projectMapInFrameAddSegment()
+{
+  VLOG(40) << "Project map segment in frame.";
+  if (options_.trace_statistics)
+  {
+    SVO_START_TIMER("segment reproject");
+  }
+  // compute overlap keyframes
+  for (size_t camera_idx = 0; camera_idx < cams_->numCameras(); ++camera_idx)
+  {
+    ReprojectorPtr& cur_reprojector = reprojectors_.at(camera_idx);
+    overlap_kfs_.at(camera_idx).clear();
+    map_->getClosestNKeyframesWithOverlap(
+          new_frames_->at(camera_idx),
+          cur_reprojector->options_.max_n_kfs,
+          &overlap_kfs_.at(camera_idx));//get nth close frame   in same camera 
+
+  }
+
+  std::vector<std::vector<SegmentPtr>> trash_segments;
+  trash_segments.resize(cams_->numCameras());
+  if (options_.use_async_reprojectors && cams_->numCameras() > 1)
+  {
+    // start reprojection workers
+    std::vector<std::future<void>> reprojector_workers;// start async working
+    for (size_t camera_idx = 0; camera_idx < cams_->numCameras(); ++camera_idx)//as for the num of camera 
+    {
+
+      auto func_seg = std::bind(&Reprojector::reprojectFrames, reprojectors_.at(camera_idx).get(),
+                            new_frames_->at(camera_idx), overlap_kfs_.at(camera_idx), trash_segments.at(camera_idx));
+      reprojector_workers.push_back(std::async(std::launch::async, func_seg));
+    }
+
+    // make sure all of them are finished
+    for (size_t i = 0; i < reprojector_workers.size(); ++i)
+      reprojector_workers[i].get();
+  }
+  else
+  {
+    for (size_t camera_idx = 0; camera_idx < cams_->numCameras(); ++camera_idx)
+    {
+
+      reprojectors_.at(camera_idx)->reprojectFrames(
+            new_frames_->at(camera_idx), overlap_kfs_.at(camera_idx),
+            trash_segments.at(camera_idx));
+    }
+  }
+
+  // Effectively clear the points that were discarded by the reprojectors
+
+
+    for (auto trash_segment : trash_segments)
+    for (auto i : trash_segment)
+      map_->safeDeleteLine(i);// could be deleted which points was invisible
+  // Count the total number of trials and matches for all reprojectors
+  Reprojector::Statistics cumul_stats_;
+  Reprojector::Statistics cumul_stats_global_map;
+  for (const ReprojectorPtr& reprojector : reprojectors_)
+  {
+    cumul_stats_.n_matches += reprojector->stats_.n_matches;
+    cumul_stats_.n_trials += reprojector->stats_.n_trials;
+    cumul_stats_global_map.n_matches += reprojector->fixed_lm_stats_.n_matches;
+    cumul_stats_global_map.n_trials += reprojector->fixed_lm_stats_.n_trials;
+  }
+
+  if (options_.trace_statistics)
+  {
+    SVO_STOP_TIMER("segment reproject");
+    SVO_LOG("repr_n_matches_local_map", cumul_stats_.n_matches);
+    SVO_LOG("repr_n_trials_local_map", cumul_stats_.n_trials);
+    SVO_LOG("repr_n_matches_global_map", cumul_stats_global_map.n_matches);
+    SVO_LOG("repr_n_trials_global_map", cumul_stats_global_map.n_trials);
+  }
+  VLOG(40) << "Reprojection:" << "\t nsegment = " << cumul_stats_.n_trials << "\t\t nMatches = "
+      << cumul_stats_.n_matches;
+
+  size_t n_total_ftrs = cumul_stats_.n_matches +
+      (cumul_stats_global_map.n_matches <= 10? 0 : cumul_stats_global_map.n_matches);
+
+  if (n_total_ftrs < options_.quality_min_fts)
+  {
+    SVO_WARN_STREAM_THROTTLE(1.0, "Not enough matched segment: " +
+                             std::to_string(n_total_ftrs));
+  }
+
+  return n_total_ftrs;
+}
+
+
 
 //------------------------------------------------------------------------------
 size_t FrameHandlerBase::optimizePose()
@@ -840,7 +939,7 @@ void FrameHandlerBase::upgradeSeedsToFeatures(const FramePtr& frame)
   size_t unconverged_cnt = 0;
   for (size_t i = 0; i < frame->num_features_; ++i)
   {
-    if (frame->landmark_vec_[i])
+    if (frame->landmark_vec_[i])//lankmark is 3d point and the info relate corresponing frame
     {
       const FeatureType& type = frame->type_vec_[i];
       if (type == FeatureType::kCorner || type == FeatureType::kEdgelet ||
@@ -850,7 +949,7 @@ void FrameHandlerBase::upgradeSeedsToFeatures(const FramePtr& frame)
       }
       else
       {
-        CHECK(isFixedLandmark(type));
+        CHECK(isFixedLandmark(type))<<static_cast<int>(type);
         frame->landmark_vec_[i]->addObservation(frame, i);
       }
     }

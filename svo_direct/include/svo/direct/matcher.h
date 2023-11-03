@@ -95,6 +95,28 @@ namespace svo
             const FloatType &ref_depth,
             Keypoint &px_cur);
 
+std::vector< MatchResult> findMatchDirectSegment(
+    const Frame& ref_frame,
+    const Frame& cur_frame,
+    const SegmentWrapper& ref_ftr,
+    const FloatType& ref_depth_s,
+    const FloatType& ref_depth_e,
+    Eigen::Ref<Keypoint> px_cur_s,
+    Eigen::Ref<Keypoint> px_cur_e,
+    Eigen::Ref<BearingVector> s_f_cur,
+    Eigen::Ref<BearingVector> e_f_cur
+    );
+MatchResult findMatchDirectSegmentEndpoint(
+    const Frame& ref_frame,
+    const Frame& cur_frame,
+    const Eigen::Ref<Keypoint> px_ref,
+    const Eigen::Ref<BearingVector> f_ref,
+    const Eigen::Ref<Eigen::Matrix<FloatType,2,1>> grad_ref, 
+    const int ref_level,
+    const FeatureType & type_ref,
+    const FloatType& ref_depth,
+    Eigen::Ref<Keypoint> px_cur);
+
         /// Find a match by searching along the epipolar line without using any features.
         MatchResult findEpipolarMatchDirect(
             const Frame &ref_frame,
@@ -104,7 +126,7 @@ namespace svo
             const double d_min_inv,
             const double d_max_inv,
             double &depth);
-        std::vector< MatchResult> findEpipolarMatchDirectSegment(
+        std::vector<MatchResult> findEpipolarMatchDirectSegment(
             const Frame &ref_frame,
             const Frame &cur_frame,
             const SegmentWrapper &ref_ftr,
@@ -116,10 +138,9 @@ namespace svo
             const double d_min_inv_e,
             const double d_max_inv_e,
             double &depth_e,
-            Segment& seg_cur,
-            BearingVector& s_f_cur,
-            BearingVector& e_f_cur
-            );
+            Segment &seg_cur,
+            BearingVector &s_f_cur,
+            BearingVector &e_f_cur);
 
         MatchResult findEpipolarMatchDirectSegmentEndpoint(
             const Frame &ref_frame,

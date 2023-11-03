@@ -33,6 +33,7 @@ struct ReprojectorOptions
   /// (!) Maximum numbers of map points (used for loop closing) to reproject
   size_t max_map_features_per_frame = 120;
 
+  size_t max_n_segments_per_frame = 50;
   /// (!) Cell width of a grid-cell. Controls the distribution of features.
   size_t cell_size = 30;
 
@@ -121,6 +122,7 @@ public:
     FramePtr ref_frame;   //!< Reference frame.
     size_t ref_index;     //!< Feature index in reference frame.
     Keypoint cur_px;      //!< Projected 2D pixel location in current frame.
+    keypoint cur_px_end;  //!< segment candidate  would set cur_px_end, but feature candidate would not set 
     int n_reproj = 0;     //!< Number of previously successful projections for quality.
     Score score;          //!< Feature Detection Score
     FeatureType type;     //!< Type of feature to determine quality.
@@ -140,6 +142,22 @@ public:
       , type(_type)
       , n_obs(_n_obs)
     { ; }
+
+    Candidate(const FramePtr _ref_frame, const size_t _ref_index,
+              const Keypoint& _cur_px, const Keypoint& _cur_px_e, const size_t _n_reproj,
+              const Score _score, const FeatureType& _type,
+              const size_t _n_obs)
+      : ref_frame(_ref_frame)
+      , ref_index(_ref_index)
+      , cur_px(_cur_px)
+      , cur_px_end(_cur_px_e)
+      , n_reproj(_n_reproj)
+      , score(_score)
+      , type(_type)
+      , n_obs(_n_obs)
+    { ; }
+
+
   };
   using Candidates = std::vector<Candidate>;
 
@@ -153,13 +171,23 @@ public:
       const FramePtr &frame,
       const std::vector<FramePtr>& close_kfs,
       std::vector<PointPtr>& trash_points);
-
+  void reprojectFrames(// just for segment projection
+    const FramePtr& cur_frame,
+    const std::vector<FramePtr>& visible_kfs,
+    std::vector<LinePtr>& trash_segments);;
 private:
   inline bool doesFrameHaveEnoughFeatures(const FramePtr& frame)
   {
     return options_.max_n_features_per_frame > 0 &&
            frame->numTrackedFeatures() >=
                options_.max_n_features_per_frame;
+  }
+
+    inline bool doesFrameHaveEnoughSegments(const FramePtr& frame)
+  {
+    return options_.max_n_segments_per_frame > 0 &&
+           frame->numTrackedSegment() >=
+               options_.max_n_segments_per_frame;
   }
 };
 
@@ -179,6 +207,15 @@ namespace reprojector_utils {
       Reprojector::Statistics& stats,
       const double seed_sigma2_thresh=200);
 
+void matchSegmentCandidates(
+    const FramePtr &frame,
+    const size_t max_n_segments_per_frame,
+    const bool affine_est_offset,
+    const bool affine_est_gain,
+    Reprojector::Candidates &candidates,
+    OccupandyGrid2D &grid,
+    Reprojector::Statistics &stats,
+    const double seed_sigma2_thresh=200);
   bool matchCandidate(
       const FramePtr& frame,
       Reprojector::Candidate& c,
@@ -186,6 +223,13 @@ namespace reprojector_utils {
       FeatureWrapper& feature,
       const double seed_sigma2_thresh=200);
 
+bool matchSegmentCandidate(
+    const FramePtr& frame,
+    Reprojector::Candidate& c,
+    Matcher& matcher,
+    SegmentWrapper& segment,
+    const double seed_sigma2_thresh=200);// from map project to this frame 
+    
   bool getCandidate(
       const FramePtr& cur_frame,
       const FramePtr& ref_frame,
@@ -200,7 +244,9 @@ namespace reprojector_utils {
   void setGridCellsOccupied(
       const Reprojector::Candidates& candidates,
       OccupandyGrid2D& grid);
-
+void setGridCellsOccupiedSegment(
+    const Reprojector::Candidates& candidates,
+    OccupandyGrid2D& grid);
   void reprojectMapPoints(const FramePtr& frame,
                           const std::vector<FramePtr>& overlap_kfs,
                           const ReprojectorOptions& options,

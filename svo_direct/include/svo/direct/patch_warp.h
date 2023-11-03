@@ -64,7 +64,15 @@ bool warpPixelwise(
     const int level_cur,
     const int halfpatch_size,
     uint8_t* patch);
-
+bool warpPixelwise(
+    const Frame& cur_frame,
+    const Frame& ref_frame,
+    const Eigen::Ref<Eigen::Matrix<FloatType,3,1>> pos,
+    const Eigen::Ref<Eigen::Matrix<FloatType,2,1>> px,
+    const int level_ref,
+    const int level_cur,
+    const int halfpatch_size,
+    uint8_t* patch);
 void createPatchNoWarp(
     const cv::Mat& img,
     const Eigen::Vector2i& px,
