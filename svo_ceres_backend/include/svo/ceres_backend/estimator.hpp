@@ -60,6 +60,7 @@
 
 #include "svo/ceres_backend/map.hpp"
 #include "svo/ceres_backend/estimator_types.hpp"
+#define SEGMENT_ENABLE_
 
 namespace svo {
 
@@ -228,6 +229,16 @@ class Estimator
    */
   bool addLandmark(const PointPtr &landmark, const bool set_fixed=false);
 
+
+  /***
+   * @brief add segment landmark
+  */
+  bool addSegmentEndpointLandmark(const LinePtr &seg_landmark,
+                            size_t idx,const bool set_fixed=false);
+
+  bool addSegmentLandmark(const LinePtr &seg_landmark,size_t idx_num,
+                            const bool set_fixed = false);
+
   /**
    * @brief Add a prior to the velocity at a specific nframe.
    * @param nframe_id Bundle ID of the new landmark.
@@ -251,7 +262,11 @@ class Estimator
    */
   ceres::ResidualBlockId addObservation(const FramePtr& frame,
                                         const size_t keypoint_idx);
-
+  ceres::ResidualBlockId addSegmentEndpointObservation(const FramePtr &frame,
+                                                 const size_t segment_idx,
+                                                 const size_t endpoint_idx);
+  std::vector<ceres::ResidualBlockId> addSegmentObservation(const FramePtr& frame,
+                                        const size_t segment_idx);
   /**
    * @brief Applies the dropping/marginalization strategy according to the
    *        RSS'13/IJRR'14 paper. The new number of frames in the window will be
@@ -304,6 +319,13 @@ class Estimator
     return isAdded;
   }
 
+  bool isSegmentEndpointAdded(BackendId segment_id) const
+  {
+    bool isAdded = seg_landmarks_map_.find(segment_id) != seg_landmarks_map_.end();
+    DEBUG_CHECK(isAdded == map_ptr_->parameterBlockExists(segment_id.asInteger()))
+        << "id="<<segment_id<<" inconsistent. isAdded = " << isAdded;
+    return isAdded;
+  }
   /**
    * @brief Checks whether the landmark is initialized.
    * @param landmark_id The ID.
@@ -322,6 +344,7 @@ class Estimator
    * @brief Update the position of all svo::Point according to backend estimate.
    */
   void updateAllActivePoints() const;
+  void updateAllActiveLines() const;
 
   /// @brief Check if the state at a slot in states is a keyframe
   /// @param[in] slot index of frame in states_ vector
@@ -479,6 +502,9 @@ class Estimator
     return landmarks_map_.size();
   }
 
+  size_t numSegmentLandmark() const{
+    return seg_landmarks_map_.size();
+  }
   /// @brief Get the ID of the current keyframe.
   /// \return The ID of the current keyframe.
   BackendId currentKeyframeId() const;
@@ -554,6 +580,7 @@ class Estimator
    */
   bool setLandmarkConstant(const BackendId &landmark_backend_id);
 
+  bool setsegmentLandmarkConstant(const BackendId& segment_landmark_backend_id);
 
   /**
    * @brief set all the biases and velocities fixed. Useful when vision is out.
@@ -614,9 +641,19 @@ class Estimator
     return landmarks_map_.find(createLandmarkId(id)) != landmarks_map_.end();
   }
 
+  inline bool isSegmentInEstimator(const int id) const
+  {
+    return seg_landmarks_map_.find(createSegmentEndpointLandmarkId(id,0)) != seg_landmarks_map_.end();
+  }
+
   inline bool isLandmarkInEstimator(const BackendId& id) const
   {
     return landmarks_map_.find(id) != landmarks_map_.end();
+  }
+
+  inline bool isSegmentLandmarkInEstimator(const BackendId& id) const
+  {
+    return seg_landmarks_map_.find(id) != seg_landmarks_map_.end();
   }
 
   inline bool hasPrior() const
@@ -656,6 +693,11 @@ class Estimator
     return fixed_landmark_parameter_ids_.size();
   }
 
+  inline size_t numFixedSegmentLandmark() const
+  {
+    return fixed_segment_landmark_parameter_ids_.size();
+  }
+
   size_t numValidFixedLandmarks() const;
 
   inline bool hasFixedPose() const
@@ -668,9 +710,19 @@ class Estimator
     checkAndAddToSet(param_id, &fixed_landmark_parameter_ids_);
   }
 
+    inline void registerFixedSegmentLandmark(const uint64_t seg_param_id)
+  {
+    checkAndAddToSet(seg_param_id, &fixed_segment_landmark_parameter_ids_);
+  }
+
   inline void deRegisterFixedLandmark(const uint64_t param_id)
   {
     checkAndDeleteFromSet(param_id, &fixed_landmark_parameter_ids_);
+  }
+
+    inline void deRegisterFixedSegmentLandmark(const uint64_t seg_param_id)
+  {
+    checkAndDeleteFromSet(seg_param_id, &fixed_segment_landmark_parameter_ids_);
   }
 
   inline bool isLandmarkFixed(const uint64_t param_id) const
@@ -680,8 +732,17 @@ class Estimator
         fixed_landmark_parameter_ids_.end());
   }
 
+  inline bool isSegmentLandmarkFixed(const uint64_t param_id) const
+  {
+    return !fixed_segment_landmark_parameter_ids_.empty() &&
+        (fixed_segment_landmark_parameter_ids_.find(param_id) !=
+        fixed_segment_landmark_parameter_ids_.end());
+  }
+
+
   void removeAllFixedLandmarks();
   void setAllFixedLandmarksEnabled(const bool enabled);
+  void setAllFixedSegmentLandmarksEnabled(const bool enabled);
 
   void removeLandmarkByBackendId(const BackendId& bid, const bool check_fixed);
 
@@ -691,6 +752,9 @@ class Estimator
   }
 
   void updateFixedLandmarks();
+
+  void updateFixedSegmentLandmark(const size_t endpoint_num);
+
 
   inline bool needPoseFixation() const
   {
@@ -715,7 +779,8 @@ class Estimator
    * @return True if successful.
    */
   bool removeObservation(ceres::ResidualBlockId residual_block_id);
-
+  // bool removeSegmentObservation(ceres::ResidualBlockId residual_block_id);
+  bool removeSegmentEndpointObservation(ceres::ResidualBlockId residual_block_id);
   // getters
   std::pair<Transformation, bool> getPoseEstimate(BackendId id) const;
 
@@ -738,6 +803,7 @@ class Estimator
 
   // the following are updated after the optimization
   PointMap landmarks_map_;
+  LineMap seg_landmarks_map_;
   ///< Contains all the current landmarks (synched after optimisation).
 
   // parameters
@@ -763,6 +829,7 @@ class Estimator
   // fixation
   std::set<uint64_t> fixed_frame_parameter_ids_;
   std::set<uint64_t> fixed_landmark_parameter_ids_;
+  std::set<uint64_t> fixed_segment_landmark_parameter_ids_;
 };
 
 }  // namespace svo

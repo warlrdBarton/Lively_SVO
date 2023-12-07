@@ -20,7 +20,9 @@
 #include <svo/common/logging.h>
 #include <svo/direct/feature_detection_types.h>
 #include <svo/direct/feature_detection.h>
+#ifdef CUDAFAST_ENABLE
 #include <opencv2/cudafeatures2d.hpp>
+#endif
 namespace svo
 {
   namespace feature_detection_utils
@@ -64,9 +66,11 @@ namespace svo
       case DetectorType::kSobel:
         detector.reset(new SobelDetector(options, cam));
         break;
+#ifdef CUDAFAST_ENABLE
       case DetectorType::kCudaFastGrad: // BUG need fix memory lack bug
         detector.reset(new CudaFastGradDetector(options, cam));
         break;
+#endif
       default:
         SVO_ERROR_STREAM("Detector unknown!");
       }
@@ -216,6 +220,8 @@ namespace svo
       }
     }
 
+
+#ifdef CUDAFAST_ENABLE
     //------------------------------------------------------------------------------
     void cudaFastDetector(
         const ImgPyr &img_pyr,
@@ -273,7 +279,7 @@ namespace svo
         }
       }
     }
-
+#endif
     //------------------------------------------------------------------------------
     void shiTomasiDetector(
         const ImgPyr &img_pyr,
@@ -899,9 +905,19 @@ namespace svo
           {
           // const auto &g = frame.grad_vec_.col(i);
           case FeatureType::kSegment:
+                      cv::line(*img_rgb, cv::Point2f(seg(0) , seg(1)),
+                     cv::Point2f(seg(2), seg(3)),
+                     cv::Scalar(0, 0, 255), 2);                     
+            break;
+          case FeatureType::kSegmentSeed:
+                      cv::line(*img_rgb, cv::Point2f(seg(0) , seg(1)),
+                     cv::Point2f(seg(2), seg(3)),
+                     cv::Scalar(255, 0, 0), 2);
+              break;
+          case FeatureType::kSegmentSeedConverged:
             cv::line(*img_rgb, cv::Point2f(seg(0) , seg(1)),
                      cv::Point2f(seg(2), seg(3)),
-                     cv::Scalar(0, 0, 255), 2);
+                     cv::Scalar(0, 200, 65), 2);
             break;
           default:
             break;
@@ -955,21 +971,20 @@ namespace svo
     void nonmax_3x3(const std::vector<Eigen::Vector2i> &corners, const std::vector<int> &scores,
                     std::vector<int> &nonmax_corners)
     {
+      // if(nonmax_corners.size()==0)
       nonmax_corners.clear();
       nonmax_corners.reserve(corners.size());
 
       if (corners.size() < 1)
         return;
 
-      // Find where each row begins
-      // (the corners are output in raster scan order). A beginning of -1 signifies
       // that there are no corners on that row.
-      int last_row = corners.back().x();
+      int last_row = corners.back().x();//x为row_idx
       std::vector<int> row_start(last_row + 1, -1);
 
       int prev_row = -1;
-      for (unsigned int i = 0; i < corners.size(); i++)
-        if (corners[i].x() != prev_row)
+      for (unsigned int i = 0; i < corners.size(); i++)//iteration all point in different line
+        if (corners[i].x() != prev_row)//
         {
           row_start[corners[i].x()] = i;
           prev_row = corners[i].x();
@@ -1044,7 +1059,106 @@ namespace svo
 
       cont:;
       }
+      
     }
+
+    void nonmax_3x3_double(const std::vector<Eigen::Vector2i> &corners, const std::vector<svo::Score> &scores,
+                    std::vector<int> &nonmax_corners)
+    {
+      if(nonmax_corners.size()!=0)
+      nonmax_corners.clear();
+      nonmax_corners.reserve(corners.size());
+      
+      if (corners.size() < 1)
+        return;
+
+      // Find where each row begins
+      // (the corners are output in raster scan order). A beginning of -1 signifies
+      // that there are no corners on that row.
+      int last_row = corners.back().x();
+      std::vector<int> row_start(last_row + 1, -1);
+
+      int prev_row = -1;
+      for (unsigned int i = 0; i < corners.size(); i++)
+        if (corners[i].x() != prev_row)
+        {
+          row_start[corners[i].x()] = i;
+          prev_row = corners[i].x();
+        }
+
+      // Point above points (roughly) to the pixel above the one of interest, if there
+      // is a feature there.
+      int point_above = 0;
+      int point_below = 0;
+
+      const int sz = (int)corners.size();
+
+      for (int i = 0; i < sz; i++)
+      {
+        double score = scores[i];
+        Eigen::Vector2i pos = corners[i];
+
+        // Check left
+        if (i > 0)
+          // if(corners[i-1] == pos-ImageRef(1,0) && (scores[i-1] >= score))
+          if (corners[i - 1].y() == pos.y() - 1 && corners[i - 1].x() == pos.x() && scores[i - 1] >= score)
+            continue;
+
+        // Check right
+        if (i < (sz - 1))
+          // if(corners[i+1] == pos+ImageRef(1,0) &&  (scores[i+1] >= score))
+          if (corners[i + 1].y() == pos.y() + 1 && corners[i + 1].x() == pos.x() && scores[i + 1] >= score)
+            continue;
+
+        // Check above (if there is a valid row above)
+        if (pos.x() != 0 && row_start[pos.x() - 1] != -1)
+        {
+          // Make sure that current point_above is one
+          // row above.
+          if (corners[point_above].x() < pos.x() - 1)
+            point_above = row_start[pos.x() - 1];
+
+          // Make point_above point to the first of the pixels above the current point,
+          // if it exists.
+          for (; corners[point_above].x() < pos.x() && corners[point_above].y() < pos.y() - 1; point_above++)
+          {
+          }
+
+          for (int i = point_above; corners[i].x() < pos.x() && corners[i].y() <= pos.y() + 1; i++)
+          {
+            int y = corners[i].y();
+            if ((y == pos.y() - 1 || y == pos.y() || y == pos.y() + 1) && (scores[i] >= score))
+              goto cont;
+          }
+        }
+        // Check below (if there is anything below)
+        if (pos.x() != last_row && row_start[pos.x() + 1] != -1 && point_below < sz) // Nothing below
+        {
+          if (corners[point_below].x() < pos.x() + 1)
+            point_below = row_start[pos.x() + 1];
+
+          // Make point below point to one of the pixels belowthe current point, if it
+          // exists.
+          for (; point_below < sz && corners[point_below].x() == pos.x() + 1 && corners[point_below].y() < pos.y() - 1;
+               point_below++)
+          {
+          }
+
+          for (int i = point_below; i < sz && corners[i].x() == pos.x() + 1 && corners[i].y() <= pos.y() + 1; i++)
+          {
+            int y = corners[i].y();
+            if ((y == pos.y() - 1 || y == pos.y() || y == pos.y() + 1) && (scores[i] >= score))
+              goto cont;
+          }
+        }
+        nonmax_corners.push_back(i);
+
+      cont:;
+      }
+      std::cout<<"end of nonmax "<<std::endl;
+      for(auto a:nonmax_corners)std::cout<<a<<std::endl;
+    }
+
 
     void mergeGrids(const OccupandyGrid2D &grid1, OccupandyGrid2D *grid2)
     {
@@ -1225,7 +1339,7 @@ namespace svo
           keyseg_vec.emplace_back(svo::Segment(score_segment.x0, score_segment.y0,score_segment.x1,score_segment.y1));
           level_vec.emplace_back(score_segment.level_);
           score_vec.emplace_back(score_segment.score_);
-          grad_vec.emplace_back(svo::GradientVector(score_segment.x1-score_segment.x0,score_segment.y1-score_segment.y0).normalized());
+          grad_vec.emplace_back(svo::GradientVector(score_segment.y0-score_segment.y1,score_segment.x1-score_segment.x0).normalized());
           grid.occupancy_[grid.getCellIndex(score_segment.x0, score_segment.y0)] = true; // in this step just for anther feature detector don't detect feature in same cell
           grid.occupancy_[grid.getCellIndex(score_segment.x1, score_segment.y1)] = true; // in this step just for anther feature detector don't detect feature in same cell
           grid.feature_occupancy_[grid.getCellIndex(score_segment.x1, score_segment.y1)] = Keypoint(score_segment.x1, score_segment.y1);

@@ -37,6 +37,7 @@ public:
   ~StereoTriangulation() = default;
 
   void compute(const FramePtr& frame0, const FramePtr& frame1);
+  // void bresenhamLine(const Segments& line,std::vector<Keypoints>& linePoints);
 };
 
 } // namespace svo

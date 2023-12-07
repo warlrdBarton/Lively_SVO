@@ -26,6 +26,7 @@ using SeedState = Eigen::Matrix<FloatType, 4, 1>;
 using Level = int;
 using Score = FloatType;
 using Keypoints = Eigen::Matrix<FloatType, 2, Eigen::Dynamic, Eigen::ColMajor>;
+using Linepoints =Eigen::Matrix<FloatType,2,4,Eigen::ColMajor>;
 using Bearings = Eigen::Matrix<FloatType, 3, Eigen::Dynamic, Eigen::ColMajor>;
 using Positions = Eigen::Matrix<FloatType, 3, Eigen::Dynamic, Eigen::ColMajor>;
 using Gradients = Eigen::Matrix<FloatType, 2, Eigen::Dynamic, Eigen::ColMajor>;
@@ -65,19 +66,22 @@ enum class FeatureType : uint8_t
   kEdgeletSeed = 0,
   kCornerSeed = 1,
   kMapPointSeed = 2,
-  kSegmentSeed=3,
-  kEdgeletSeedConverged = 4,
-  kCornerSeedConverged = 5,
-  kMapPointSeedConverged = 6,
-  kSegmentSeedConverged = 7,
-  kEdgelet = 8,
-  kCorner = 9,
-  kMapPoint = 10,
-  kSegment=11,
-  kFixedLandmark = 12,
-  kFixedSegmentLandmark = 13,
-  kOutlier = 14,
-  KSegmentOutlier=15
+  kLinePointSeed =3,
+  kSegmentSeed=4,
+  kEdgeletSeedConverged = 5,
+  kCornerSeedConverged = 6,
+  kMapPointSeedConverged = 7,
+  kLinePointSeedConverged =8,
+  kSegmentSeedConverged = 9,
+  kEdgelet = 10,
+  kCorner = 11,
+  kMapPoint = 12,
+  kLinePoint = 13,
+  kSegment=14,
+  kFixedLandmark = 15,
+  kFixedSegmentLandmark = 16,
+  kOutlier = 17,
+  KSegmentOutlier=18
   
 };
 
@@ -86,7 +90,7 @@ using FeatureTypes = std::vector<FeatureType>;
 
 inline bool isSeed(const FeatureType& t)
 {
-  return static_cast<uint8_t>(t) < 8;
+  return static_cast<uint8_t>(t) < 10;
 }
 
 inline bool isCornerEdgeletSeed(const FeatureType& t)
@@ -167,7 +171,8 @@ inline bool isUnconvergedSeed(const FeatureType& t)
 {
   return (t == FeatureType::kCornerSeed
           || t == FeatureType::kMapPointSeed
-          || t == FeatureType::kEdgeletSeed);
+          || t == FeatureType::kEdgeletSeed
+          || t== FeatureType::kSegmentSeed);
 }
 
 inline bool isFixedLandmark(const FeatureType& t)
@@ -182,7 +187,7 @@ inline bool isFixedSegmentLandmark(const FeatureType& t)
 
 inline bool isSegment(const FeatureType& t)
 {
-  return t== FeatureType::kSegment|| t==FeatureType::kSegmentSeed || t==FeatureType::kSegmentSeedConverged || t==FeatureType::kFixedSegmentLandmark;
+  return t== FeatureType::kSegment|| t==FeatureType::kSegmentSeed || t==FeatureType::kSegmentSeedConverged ;
 }
 
 inline std::string str(const FeatureType& type)

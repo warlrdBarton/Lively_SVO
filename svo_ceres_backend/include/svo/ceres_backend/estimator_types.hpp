@@ -148,7 +148,9 @@ enum class IdType : uint8_t
   NFrame = 0,
   Landmark = 1,
   ImuStates = 2,
-  Extrinsics = 3
+  Extrinsics = 3,
+  SegmentLandmark =4
+
 };
 
 //! The Backend ID for multiple types.
@@ -168,6 +170,12 @@ enum class IdType : uint8_t
 //! Byte 0: IdType
 //! Byte 1-3: zero
 //! Byte 4-7: 32 bit Track ID
+
+//!
+//! For segment Landmarks
+//! Byte 0: IdType
+//! Byte 1-3: zero
+//! Byte 4-7: 32 bit  (seg Track ID)*2 +idx  means the segment endpoint's idx
 class BackendId
 {
 public:
@@ -224,12 +232,25 @@ public:
 private:
   uint64_t id_{0};
 };
-
+// int segment_endpoint_num = 2;
 // Factories
 inline BackendId createLandmarkId(int track_id)
 {
   return BackendId(static_cast<uint64_t>(track_id) |
                    (static_cast<uint64_t>(IdType::Landmark) << 56));
+}
+
+
+
+inline BackendId createSegmentLandmarkId(int track_id)
+{
+  return BackendId(static_cast<uint64_t>(track_id*2) |
+                   (static_cast<uint64_t>(IdType::SegmentLandmark) << 56));
+}
+inline BackendId createSegmentEndpointLandmarkId(int track_id,int idx)
+{
+  return BackendId(static_cast<uint64_t>(track_id*2+idx) |
+                   (static_cast<uint64_t>(IdType::SegmentLandmark) << 56));
 }
 
 inline BackendId createNFrameId(int32_t bundle_id)
@@ -329,9 +350,52 @@ struct MapPoint
   bool fixed_position;
 };
 
+
+struct MapSegmentEndpoint
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  /// \brief Default constructor. Point is nullptr.
+  MapSegmentEndpoint()
+      : line(nullptr),idx(-1), fixed_position(false)
+  {}
+  /**
+   * @brief Constructor.
+   * @param point     Pointer to underlying svo::Point
+   */
+  MapSegmentEndpoint(const LinePtr& line,const size_t idx)
+    : line(line),idx(idx), fixed_position(false)
+  {
+    if(idx==0)
+    hom_coordinates << line->spos_, 1;
+    else
+    hom_coordinates << line->epos_, 1;
+
+  }
+
+  Eigen::Vector4d hom_coordinates; ///< Continuosly updates position of point
+
+
+  //! Pointer to the point. The position is not updated inside backend
+  //! because of possible multithreading conflicts.
+  LinePtr line;
+
+  size_t idx;
+
+  //! Observations of this point. The uint64_t's are the casted
+  //! ceres::ResidualBlockId values of the reprojection error residual block.
+  std::map<SegmentIdentifier, uint64_t> observations;
+
+  //! Is the point position fixed by a loop closure?
+  bool fixed_position;
+};
+
 typedef std::vector<MapPoint, Eigen::aligned_allocator<MapPoint> > MapPointVector;
+typedef std::vector<MapSegmentEndpoint, Eigen::aligned_allocator<MapSegmentEndpoint> > MapLineVector;
 typedef std::map<BackendId, MapPoint, std::less<BackendId>,
   Eigen::aligned_allocator<std::pair<const BackendId, MapPoint>> > PointMap;
+typedef std::map<BackendId, MapSegmentEndpoint, std::less<BackendId>,
+  Eigen::aligned_allocator<std::pair<const BackendId, MapSegmentEndpoint>> >LineMap;
 
 //------------------------------------------------------------------------------
 // [velocity, gyro biases, accel biases]

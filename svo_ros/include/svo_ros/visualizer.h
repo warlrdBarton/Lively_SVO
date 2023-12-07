@@ -70,6 +70,8 @@ public:
 
   ros::Publisher pub_frames_;
   ros::Publisher pub_points_;
+  ros::Publisher pub_lines_;
+
   ros::Publisher pub_imu_pose_;
   ros::Publisher pub_info_;
   ros::Publisher pub_markers_;
@@ -162,6 +164,9 @@ public:
   void visualizeGravity(const FrameBundlePtr& frame_bundle,
                         const uint64_t timestamp,const double & g_w);
 #endif
+
+  void visualizeSegmentLandmark(const FrameBundlePtr& frame_bundle,
+                        const uint64_t timestamp);
 
   void publishTrajectoryPoint(const Eigen::Vector3d& pos_in_vision,
                               const uint64_t timestamp, const int id);

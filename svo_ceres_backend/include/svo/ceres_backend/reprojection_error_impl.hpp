@@ -81,7 +81,7 @@ inline bool ReprojectionError::Evaluate(double const* const * parameters,
 // the Jacobians in the minimal internal representation.
 inline bool ReprojectionError::EvaluateWithMinimalJacobians(
     double const* const * parameters, double* residuals, double** jacobians,
-    double** jacobians_minimal) const
+    double** jacobians_minimal) const//computer the error and jacobians for H_ and g_  
 {
   if (disabled_)
   {
@@ -192,25 +192,26 @@ inline bool ReprojectionError::EvaluateWithMinimalJacobians(
   bool valid = true;
   if (fabs(hp_C[3]) > 1.0e-8)
   {
-    Eigen::Vector3d p_C = hp_C.template head<3>() / hp_C[3];
+    Eigen::Vector3d p_C = hp_C.template head<3>() / hp_C[3];//use homogeneous
     if (p_C[2] < 0.2)
     {
       // 20 cm - not very generic... but reasonable
       //std::cout<<"INVALID POINT"<<std::endl;
-      valid = false;
+      valid = false; 
     }
   }
 
   // calculate jacobians, if required
   // This is pretty close to Paul Furgale's thesis. eq. 3.100 on page 40
+  //it will calculate the jacobian matrix of the three-dimensional point to the projection point 
   if (jacobians != nullptr)
   {
-    Eigen::Matrix<double, 2, 4> Jh_weighted;
-    Jh_weighted.topLeftCorner<2, 3>() = square_root_information_ * *J_proj;
+    Eigen::Matrix<double, 2, 4> Jh_weighted;//jacobian
+    Jh_weighted.topLeftCorner<2, 3>() = square_root_information_ * (*J_proj);
     Jh_weighted.bottomRightCorner<2, 1>().setZero();
     if (jacobians[0] != nullptr)
     {
-      Eigen::Vector3d p = hp_W.head<3>() - t_WS_W * hp_W[3];
+      Eigen::Vector3d p = hp_W.head<3>() - t_WS_W * hp_W[3];// t_ws_w mean world to sensor 
       Eigen::Matrix<double, 4, 6> J;
       J.setZero();
       J.topLeftCorner<3, 3>() = C_SW * hp_W[3];
@@ -246,7 +247,6 @@ inline bool ReprojectionError::EvaluateWithMinimalJacobians(
           J0_minimal_mapped = J0_minimal;
         }
       }
-
     }
     if (jacobians[1] != nullptr)
     {

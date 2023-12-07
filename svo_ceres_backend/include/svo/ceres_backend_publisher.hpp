@@ -78,6 +78,7 @@ private:
   ros::Publisher pub_imu_pose_;
   ros::Publisher pub_imu_pose_viz_;
   ros::Publisher pub_points_;
+  ros::Publisher pub_lines_;
   ros::Publisher pub_twist_; 
 
 
@@ -86,6 +87,7 @@ private:
                       const int32_t seq);
   void publishBackendLandmarks(const int64_t timestamp) const;
 
+  void publishBackendSegmentLandmarks(const int64_t timestamp) const;
 
   void publishImuTwist(ViNodeState& state,
                                            const int64_t timestamp,

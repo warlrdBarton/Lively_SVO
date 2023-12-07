@@ -68,7 +68,7 @@ inline ceres::ResidualBlockId Estimator::addObservation(const FramePtr &frame,
   // get the keypoint measurement
   size_t slot;
   bool success;
-  std::tie(slot, success) = states_.findSlot(nframe_id);
+  std::tie(slot, success) = states_.findSlot(nframe_id);//find the frame slot 
   if (!success)
   {
     LOG(ERROR) << "Tried to add observation for frame that is either already "
@@ -88,7 +88,7 @@ inline ceres::ResidualBlockId Estimator::addObservation(const FramePtr &frame,
       std::make_shared<ceres_backend::ReprojectionError>(
         std::static_pointer_cast<const Camera>(
           camera_rig_->getCameraShared(cam_idx)),
-        frame->px_vec_.col(keypoint_idx), information);
+        frame->px_vec_.col(keypoint_idx), information);//just new a resiual error ,but not link to the data
 
   if (isLandmarkFixed(landmark_backend_id.asInteger()))
   {
@@ -114,5 +114,94 @@ inline ceres::ResidualBlockId Estimator::addObservation(const FramePtr &frame,
 
   return ret_val;
 }
+
+#ifdef SEGMENT_ENABLE//todo dgz
+
+inline ceres::ResidualBlockId Estimator::addSegmentEndpointObservation(const FramePtr &frame,
+                                                 const size_t segment_idx,const size_t endpoint_idx)
+{
+  const BackendId nframe_id = createNFrameId(frame->bundleId());
+  DEBUG_CHECK_GE(frame->seg_level_vec_(segment_idx), 0);
+  const int cam_idx = frame->getNFrameIndex();
+  // get Landmark ID.
+  const BackendId seg_landmark_backend_id= createSegmentEndpointLandmarkId(
+        frame->seg_track_id_vec_[segment_idx],endpoint_idx);
+  DEBUG_CHECK(isSegmentEndpointAdded(seg_landmark_backend_id)) << "segment "<< endpoint_idx<<" endpoint not added";
+
+  SegmentIdentifier sid(frame, segment_idx);
+  // check for double observations
+  DEBUG_CHECK(seg_landmarks_map_.at(seg_landmark_backend_id).observations.find(sid)
+              == seg_landmarks_map_.at(seg_landmark_backend_id).observations.end())
+      << "Trying to add the same segment start endpoint for the second time";
+
+  // get the keypoint measurement
+  size_t slot;
+  bool success;
+  std::tie(slot, success) = states_.findSlot(nframe_id);//find the frame slot 
+  if (!success)
+  {
+    LOG(ERROR) << "Tried to add segment observation for frame that is either already "
+               << "marginalized out or not yet added to the state. ID = "
+               << nframe_id;
+    return nullptr;
+  }
+
+  Eigen::Matrix2d information = Eigen::Matrix2d::Identity();
+  information *= 1.0 / static_cast<double>(1 << frame->seg_level_vec_(segment_idx));
+
+  // create error term
+  DEBUG_CHECK(std::dynamic_pointer_cast<const Camera>(
+                camera_rig_->getCameraShared(cam_idx)))
+      << "Incorrect pointer cast requested. ";
+  Eigen::Matrix<FloatType,2,1> measurement_;
+  if(endpoint_idx==0)
+  {
+    measurement_=frame->seg_vec_.col(segment_idx).head<2>();
+  }
+  else{
+    measurement_=frame->seg_vec_.col(segment_idx).tail<2>();
+
+  }
+  std::shared_ptr<ceres_backend::ReprojectionError > reprojection_error =
+      std::make_shared<ceres_backend::ReprojectionError>(
+        std::static_pointer_cast<const Camera>(
+          camera_rig_->getCameraShared(cam_idx)),
+        measurement_, information);//just new a resiual error ,but not link to the data
+
+
+  if (isSegmentLandmarkFixed(seg_landmark_backend_id.asInteger()))
+  {
+    reprojection_error->setPointConstant(true);
+  }
+
+  BackendId extrinsics_id = constant_extrinsics_ids_[cam_idx];
+  if (estimate_temporal_extrinsics_)
+  {
+    extrinsics_id = changeIdType(nframe_id, IdType::Extrinsics, cam_idx);
+  }
+  ceres::ResidualBlockId ret_val = map_ptr_->addResidualBlock(
+        reprojection_error,
+        cauchy_loss_function_ptr_ ? cauchy_loss_function_ptr_.get() : nullptr,
+        map_ptr_->parameterBlockPtr(nframe_id.asInteger()),
+        map_ptr_->parameterBlockPtr(seg_landmark_backend_id.asInteger()),
+        map_ptr_->parameterBlockPtr(extrinsics_id.asInteger()));
+
+
+  // remember
+  seg_landmarks_map_.at(seg_landmark_backend_id).observations.insert(
+        std::pair<SegmentIdentifier, uint64_t>(
+          sid, reinterpret_cast<uint64_t>(ret_val)));//observation record the frane line info info and reprojection residual id
+
+  return ret_val;
+}
+
+inline std::vector<ceres::ResidualBlockId> Estimator::addSegmentObservation(const FramePtr &frame,
+                                                 const size_t segment_idx)
+{
+  ceres::ResidualBlockId start_endpoint=addSegmentEndpointObservation(frame,segment_idx,0);
+  ceres::ResidualBlockId end_endpoint=addSegmentEndpointObservation(frame,segment_idx,1);
+  return {start_endpoint,end_endpoint};
+}
+#endif
 
 }  // namespace svo

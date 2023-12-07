@@ -57,6 +57,13 @@ void getWarpMatrixAffine(
   cam_cur->project3(T_cur_ref * xyz_dv_ref, &px_dv_cur);
   A_cur_ref->col(0) = (px_du_cur - px_cur) / kHalfPatchSize;
   A_cur_ref->col(1) = (px_dv_cur - px_cur) / kHalfPatchSize;
+  if(A_cur_ref->col(0)[0]==0&&A_cur_ref->col(0)[1]==0)
+  {
+    std::cout<<px_cur<<std::endl;
+    std::cout<<px_du_cur<<std::endl;
+    std::cout<<px_dv_cur<<std::endl;
+    return;
+  }
 }
 
 void getWarpMatrixAffineHomography(

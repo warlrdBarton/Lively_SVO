@@ -373,7 +373,12 @@ bool Map::removeParameterBlock(
   return removeParameterBlock(parameter_block->id());
 }
 
-// Adds a residual block.
+/***
+ * @brief 1.add problem block
+ * 2.add residual block
+ * 3.add residual to parameter path
+ * 4.add  parameter to residual path 
+*/
 ceres::ResidualBlockId Map::addResidualBlock(
     std::shared_ptr< ceres::CostFunction> cost_function,
     ceres::LossFunction* loss_function,
@@ -562,6 +567,13 @@ void Map::resetResidualBlock(
 }
 
 // Remove a residual block.
+//remove residualblock
+/***
+ * @brief 1.remove problem residualblock
+ *        2.remvoe this residual link to all parameter path info
+ *        3.remove this residualinfo
+ *        4.remove the parameter link this residual  path info
+*/
 bool Map::removeResidualBlock(ceres::ResidualBlockId residual_block_id)
 {
   VLOG(200) << "Removing residual block with ID " << residual_block_id;

@@ -47,15 +47,21 @@ endforeach(${INCLUDE_DIRS})
 include_directories(include ${INCLUDE_DIRS})
 cs_add_library(svo SHARED ${SVO_SOURCEFILES} ${SVO_HEADERFILES})
 target_link_libraries(svo ${LINK_LIBS})
+target_compile_options(svo PRIVATE -g)
+
+cs_add_executable(test_stereo_triangulation test/test_stereo_triangulation.cpp)
+target_link_libraries(test_stereo_triangulation ${PROJECT_NAME})
+target_compile_options(test_stereo_triangulation PRIVATE -g)
 
 ################################################################################
 ###
 ### GTEST
 ###
 
+
+
 catkin_add_gtest(${PROJECT_NAME}-test-frame test/test_frame.cpp)
 target_link_libraries(${PROJECT_NAME}-test-frame ${PROJECT_NAME})
-
 ################################################################################
 cs_install()
 cs_export()

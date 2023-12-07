@@ -123,7 +123,7 @@ public:
   Eigen::Vector3d             normal_;                  //!< Surface normal at segment.
   Eigen::Matrix3d             normal_information_;      //!< Inverse covariance matrix of normal estimation.
   bool                        normal_set_;              //!< Flag whether the surface normal was estimated or not.
-  SegmentIdentifierList      obs_;                     //!< References to keyframes which observe the segment.
+  SegmentIdentifierList       obs_;                     //!< References to keyframes which observe the segment.
   size_t                      n_obs_;                   //!< Number of obervations: Keyframes AND successful reprojections in intermediate frames.
   // g2osegment*                   v_pt_;                    //!< Temporary segmenter to the segment-vertex in g2o during bundle adjustment.
   int                         last_published_ts_;       //!< Timestamp of last publishing.
@@ -132,6 +132,7 @@ public:
   int                         n_failed_reproj_;         //!< Number of failed reprojections. Used to assess the quality of the segment.
   int                         n_succeeded_reproj_;      //!< Number of succeeded reprojections. Used to assess the quality of the segment.
   int                         last_structure_optim_;    //!< Timestamp of last segment optimization
+  bool                        in_ba_graph_ = false;     //!< Was this point already added to the iSAM bundle adjustment graph?
 
   Line(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos);
 

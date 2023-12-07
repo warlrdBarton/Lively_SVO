@@ -19,6 +19,7 @@
 #include <svo/common/point.h>
 #include <svo/common/seed.h>
 #include <svo/common/conversions.h>
+#define CHECK_EIGEN_HAVE_NAN(x,str) if((x.array().unaryExpr([](double v) { return std::isinf(v)||std::isnan(v); })).any()) std::cout<<str<< #x <<":\n"<< (x).transpose()<<std::endl;
 
 namespace svo {
 
@@ -88,6 +89,8 @@ public:
   TrackIds seg_track_id_vec_;           ///< ID of every observed 3d point. -1 if no point assigned.
   Bearings seg_f_vec_;                  ///< Bearing Vector
   std::vector<bool> seg_in_ba_graph_vec_;
+  std::multimap<size_t,size_t>  line_point_idx_vec_;
+
 
 
   // segmentLens segment_length_vec_;
@@ -95,6 +98,7 @@ public:
   // }
 
   FloatType seed_mu_range_;
+  // FloatType seed_mu_range_;
   bool is_stable_ = true;
 
   // imu states
@@ -177,8 +181,10 @@ SegmentWrapper getEmptySegmentWrapper();
 inline Eigen::Matrix<FloatType, 3, 2> getSegmentSeedPosInFrame(size_t idx) const {
     Eigen::Matrix<FloatType,2,1> depth = getSegmentSeedDepth(idx);
     Eigen::Matrix<FloatType, 3, 2> result;
-    result.col(0) = f_vec_.col(idx * 2) * depth[0];
-    result.col(1) = f_vec_.col(idx * 2 + 1) * depth[1];
+    result.col(0) = seg_f_vec_.col(idx * 2) * depth(0);
+    result.col(1) = seg_f_vec_.col(idx * 2 + 1) * depth(1);
+
+
     return result;
 }
 
@@ -264,7 +270,7 @@ inline Eigen::Matrix<FloatType, 3, 2> getSegmentSeedPosInFrame(size_t idx) const
   }
 
 
-  inline size_t numFixedLandmarks() const {
+  inline size_t numFixedSegmentLandmarks() const {
     size_t count = 0;
     for(size_t i = 0; i < num_segments_; ++i)
     {

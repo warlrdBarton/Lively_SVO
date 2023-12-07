@@ -90,7 +90,7 @@ bool PoseLocalParameterization::plus(const double* x, const double* delta,
   x_plus_delta[3] = q.x();
   x_plus_delta[4] = q.y();
   x_plus_delta[5] = q.z();
-  x_plus_delta[6] = q.w();
+  x_plus_delta[6] = q.w();// q vector parameter is the tail 3 element
 
   DEBUG_CHECK_NEAR(q.norm(), 1.0, 1e-13);
 

@@ -1,25 +1,37 @@
-// This file is part of SVO - Semi-direct Visual Odometry.
-//
-// Copyright (C) 2014 Christian Forster <forster at ifi dot uzh dot ch>
-// (Robotics and Perception Group, University of Zurich, Switzerland).
-#include <random>
-
-#include <numeric>
-#include <svo/direct/matcher.h>
-#include <svo/common/point.h>
+// svo
+#include <svo/test_utils/synthetic_dataset.h>
 #include <svo/common/frame.h>
-#include <svo/stereo_triangulation.h>
+#include <svo/direct/matcher.h>
 #include <svo/direct/feature_detection.h>
-#include <svo/tracker/feature_tracker.h>
 #include <svo/direct/feature_detection_utils.h>
-
-
+#include <algorithm>
+#include <numeric>
+#include <random>
+// others
+#include <opencv2/highgui/highgui.hpp> // imread
+#include <opencv2/imgproc/imgproc.hpp>
+#include <svo/common/types.h>
 #define SEGMENT_ENABLE_stereo_triangulation
-#define NAME_VALUE_LOG(x) std::cout << #x << ": \n" << (x) << std::endl;
 
-namespace svo
+using namespace svo;
+struct StereoTriangulationOptions
 {
+  size_t triangulate_n_features = 120;
+  size_t triangulate_n_segment = 30;
+  double mean_depth_inv = 1.0 / 3.0;
+  double min_depth_inv = 1.0 / 1.0;
+  double max_depth_inv = 1.0 / 50.0;
+};
+size_t triangulate_n_features = 120;
+  size_t triangulate_n_segment = 30;
+  double mean_depth_inv = 1.0 / 3.0;
+  double min_depth_inv = 1.0 / 1.0;
+  double max_depth_inv = 1.0 / 50.0;
 
+
+/***
+ * @brief let the points in line ,suppress non-maximum
+*/
 void nonmax_line(const std::vector<Eigen::Vector2i> &corners, const std::vector<int> &scores,
                     const size_t nonmax_list_range,const size_t nonmax_space_range,std::vector<int> &nonmax_corners)
 {
@@ -142,7 +154,88 @@ void ransac_line_fit(const std::vector<Position>& points, int max_iterations, do
     }
 }
 
+void drawLinePoint(const svo::FramePtr &frame1, cv::Mat &three_channel_mat)
+{
+  cv::cvtColor(frame1->img_pyr_[0], three_channel_mat, cv::COLOR_GRAY2BGR);
 
+   for (size_t i = 0; i < frame1->num_segments_; i++)
+  {
+    // std::cout<<" "<<static_cast<int>(new_seg_types[i])<<std::endl;
+    svo::Segment seg = frame1->seg_vec_.col(i);
+    // if (frame1.landmark_vec_[i] == nullptr && frame1.seed_ref_vec_[i].keyframe1 == nullptr && only_matched_seg)
+    //   continue;
+    switch (frame1->seg_type_vec_[i])
+    {
+      // const auto &g = frame1.grad_vec_.col(i);
+    case FeatureType::kSegment:
+      cv::line(three_channel_mat, cv::Point2f(seg(0), seg(1)),
+               cv::Point2f(seg(2), seg(3)),
+               cv::Scalar(63, 255, 50), 2);
+      break;
+
+    default:
+      break;
+    }
+    // const auto &g = frame1.grad_vec_.col(i);
+  }
+
+  for (size_t i = 0; i < frame1->num_features_; ++i)
+  {
+    svo::Keypoint px = frame1->px_vec_.col(i);
+    svo::Keypoint g = frame1->grad_vec_.col(i);
+    switch (frame1->type_vec_[i])
+    {
+    case FeatureType::kEdgelet:
+      cv::line(three_channel_mat, cv::Point2f(px(0) + 3 * g(1), px(1) - 3 * g(0)),
+               cv::Point2f(px(0) - 3 * g(1), px(1) + 3 * g(0)),
+               cv::Scalar(255, 0, 255), 2);
+      break;
+    case FeatureType::kCorner:
+      cv::rectangle(three_channel_mat, cv::Point2f(px(0) - 2, px(1) - 2),
+                    cv::Point2f(px(0) + 2, px(1) + 2),
+                    cv::Scalar(0, 255, 0), -1);
+      break;
+    case FeatureType::kMapPoint:
+      cv::rectangle(three_channel_mat, cv::Point2f(px(0) - 2, px(1) - 2),
+                    cv::Point2f(px(0) + 2, px(1) + 2),
+                    cv::Scalar(255, 0, 0), -1);
+      break;
+    case FeatureType::kFixedLandmark:
+      cv::rectangle(three_channel_mat, cv::Point2f(px(0) - 3, px(1) - 3),
+                    cv::Point2f(px(0) + 3, px(1) + 3),
+                    cv::Scalar(101, 236, 255), -1);
+      break;
+    case FeatureType::kEdgeletSeed:
+    case FeatureType::kEdgeletSeedConverged:
+      cv::line(three_channel_mat, cv::Point2f(px(0) + 3 * g(1), px(1) - 3 * g(0)),
+               cv::Point2f(px(0) - 3 * g(1), px(1) + 3 * g(0)),
+               cv::Scalar(0, 0, 255), 2);
+      break;
+    case FeatureType::kCornerSeed:
+    case FeatureType::kCornerSeedConverged:
+      cv::circle(three_channel_mat, cv::Point2f(px(0), px(1)),
+                 5, cv::Scalar(0, 255, 0), 1);
+      break;
+    case FeatureType::kMapPointSeed:
+    case FeatureType::kMapPointSeedConverged:
+      cv::circle(three_channel_mat, cv::Point2f(px(0), px(1)),
+                 5, cv::Scalar(255, 0, 0), 1);
+      break;
+    case FeatureType::kLinePoint:
+      cv::rectangle(three_channel_mat, cv::Point2f(px(0) - 2, px(1) - 2),
+                    cv::Point2f(px(0) + 2, px(1) + 2),
+                    cv::Scalar(0, 0,0), -1);
+      break;
+    default:
+      cv::circle(three_channel_mat, cv::Point2f(px(0), px(1)),
+                 5, cv::Scalar(0, 0, 255), -1);
+      break;
+    }
+  }
+  // std::cout<<static_cast<size_t>(new_seg.cols());
+ 
+}
+//bug list
 bool detectorLine(const FramePtr frame,
                   const std::vector<Eigen::Vector2i> &linePoints,
                   const double threshold,
@@ -157,7 +250,7 @@ bool detectorLine(const FramePtr frame,
   for (size_t idx=0;idx<static_cast<size_t>(linePoints.size());++idx)
   {
     double score;
-    if (feature_detection_utils::getShiTomasiScore(frame->img_pyr_[0], linePoints[idx], &score))
+    if (svo::feature_detection_utils::getShiTomasiScore(frame->img_pyr_[0], linePoints[idx], &score))
     {
       if (score > threshold)
       {
@@ -250,35 +343,36 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
     }
   }
   
-}
+};
 
+int main(int argc, char **argv)
+{
+  // Load dataset.
+  std::string dataset_dir = "/home/sunteng/dataset/day_11_25_office_stereo_imu_sync_0_640_480";
+  svo::test_utils::SyntheticDataset dataset(dataset_dir, 0, 0);
 
-  StereoTriangulation::StereoTriangulation(
-      const StereoTriangulationOptions &options,
-      const AbstractDetector::Ptr &feature_detector)
-      : options_(options), feature_detector_(feature_detector)
-  {
-    ;
-  }
+  svo::DetectorOptions options;
+  svo::SegmentDetectorOptions segmenter_options;
+  options.detector_type = svo::DetectorType::kFastGrad;
+  segmenter_options.detector_type = svo::DetectorType::kELSEDSegment;
 
-  StereoTriangulation::StereoTriangulation(
-      const StereoTriangulationOptions &options,
-      const AbstractDetector::Ptr &feature_detector,
-      const SegmentAbstractDetector::Ptr &segment_detector)
-      : options_(options), feature_detector_(feature_detector), segment_detector_(segment_detector)
+  // if (argc >= 4)
+  //   options.threshold_primary = std::atof(argv[3]);
+
+  svo::AbstractDetectorPtr feature_detector_ =
+      svo::feature_detection_utils::makeDetector(options, dataset.cam());
+
+  svo::SegmentAbstractDetectorPtr segment_detector_ =
+      svo::feature_detection_utils::makeSegmentDetector(segmenter_options, dataset.cam());
+
+  svo::FramePtr frame1, frame0;
+  while (dataset.getNextFrame(5u, frame0, nullptr) && dataset.getNextFrame(5u, frame1, nullptr))
   {
-    ;
-  }
-  
-  void StereoTriangulation::compute(const FramePtr &frame0,
-                                    const FramePtr &frame1)
-  {
-    // Check if there is something to do
-        if (frame0->numLandmarks() >= 120)
+    if (frame0->numLandmarks() >= 120)
     {
-      VLOG(5) << "Calling stereo triangulation with sufficient number of features"
-              << " has no effect.";
-      return ;
+      // VLOG(5) << "Calling stereo triangulation with sufficient number of features"
+      //         << " has no effect.";
+      return 0;
     }
 
     // Detect new features.
@@ -294,8 +388,8 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
 
     if (new_px.cols() == 0)
     {
-      SVO_ERROR_STREAM("Stereo Triangulation: No features detected.");
-      return ;
+      // SVO_ERROR_STREAM("Stereo Triangulation: No features detected.");
+      return 0;
     }
 
     // Compute and normalize all bearing vectors.
@@ -469,18 +563,20 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
 
 #endif
 
+    // Add features to first frame.
+
     // now for all maximum corners, initialize a new seed
     size_t n_succeded = 0, n_failed = 0;
 
     const size_t n_desired =
-        options_.triangulate_n_features - frame0->numLandmarks();
+        120 - frame0->numLandmarks();
     // need the minimum num feature to stereo triangulate
     // note: we checked already at start that n_desired will be larger than 0
 
 #ifdef SEGMENT_ENABLE_stereo_triangulation
     // dgztodo
     const size_t n_desired_segment =
-        options_.triangulate_n_segment - frame0->numSegmentLandmarks(); // segmentlandmark corresponding the fixed line
+        30 - frame0->numSegmentLandmarks(); // segmentlandmark corresponding the fixed line
     if (frame1->num_segments_ + n_desired_segment > frame1->seg_landmark_vec_.size())
     {
       frame1->resizeSegmentStorage(frame1->num_segments_ + n_desired_segment);
@@ -506,8 +602,8 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
       FeatureWrapper ref_ftr = frame0->getFeatureWrapper(i_ref);
       Matcher::MatchResult res =
           matcher.findEpipolarMatchDirect(
-              *frame0, *frame1, T_f1f0, ref_ftr, options_.mean_depth_inv,
-              options_.min_depth_inv, options_.max_depth_inv, depth);
+              *frame0, *frame1, T_f1f0, ref_ftr, mean_depth_inv,
+              min_depth_inv, max_depth_inv, depth);
 
       if (res == Matcher::MatchResult::kSuccess)
       {
@@ -562,14 +658,19 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
       BearingVector e_f_cur;
       res_s =
           matcher.findEpipolarMatchDirectSegment(
-              *frame0, *frame1, ref_ftr_s, options_.mean_depth_inv,
-              options_.min_depth_inv, options_.max_depth_inv, depth_s,
-              options_.mean_depth_inv,
-              options_.min_depth_inv, options_.max_depth_inv, depth_e, segment_cur, s_f_cur,e_f_cur);
+              *frame0, *frame1, ref_ftr_s, mean_depth_inv,
+              min_depth_inv, max_depth_inv, depth_s,
+              mean_depth_inv,
+              min_depth_inv, max_depth_inv, depth_e, segment_cur, s_f_cur,e_f_cur);
 
       if (res_s[0] == Matcher::MatchResult::kSuccess && res_s[1] == Matcher::MatchResult::kSuccess)
       {
-       const Position xyz_world_s = frame0->T_world_cam() * (frame0->seg_f_vec_.col(static_cast<int>(i_ref * 2)) * depth_s);
+
+//           std::cout<<"after stereo find epipolarmatch : and now frame1's idx"<< frame1->num_segments_<<std::endl;
+//   std::cout<<"s_f_cur"<<s_f_cur<<"\ne_f_cur"<<e_f_cur<<"\nseg_cur.tail<2>()"<<segment_cur.tail<2>()<<"\nseg_cur.head<2>()"<<segment_cur.head<2>()<<std::endl;
+//   // std::cout<<<<std::endl;
+//  std::cout<<"s_matchresult"<<(res_s[0]== Matcher::MatchResult::kSuccess)<<"e_matchresult"<<(res_s[1]== Matcher::MatchResult::kSuccess)<<std::endl;
+        const Position xyz_world_s = frame0->T_world_cam() * (frame0->seg_f_vec_.col(static_cast<int>(i_ref * 2)) * depth_s);
         const Position xyz_world_e = frame0->T_world_cam() * (frame0->seg_f_vec_.col(static_cast<int>(i_ref * 2 + 1)) * depth_e);
 
         // PointPtr new_point_s(new Point(xyz_world_s));
@@ -608,29 +709,34 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
             all_point.push_back(frame0->landmark_vec_[it->second]->pos_);
           }
         }
-        if(all_point.size()==0)goto out;
         all_point.push_back(xyz_world_s);
         all_point.push_back(xyz_world_e);
         Position direction,centoid;
         std::vector<size_t> best_inlier;
-        ransac_line_fit(all_point,100,2,direction,centoid,best_inlier);
-        // project_points_onto_line(direction,centoid,all_point,best_inlier);
+        ransac_line_fit(all_point,100,1,direction,centoid,best_inlier);
+        project_points_onto_line(direction,centoid,all_point,best_inlier);
         project_all_points_onto_line(direction,centoid,all_point);
-        frame0->seg_landmark_vec_[i_ref]->spos_ = all_point[all_point.size()-2];
-        frame0->seg_landmark_vec_[i_ref]->epos_ = all_point[all_point.size()-1];
+        
       }
       else
       {
         ++n_segment_failed;
       }
-      out:
       if (n_segment_succeded >= n_desired_segment)
         break;
     }
 
-    VLOG(20) << "Stereo: Triangulated " << n_segment_succeded << " features,"
-             << n_segment_failed << " failed.";
 #endif
+
+
+    cv::Mat three_channel_mat_0;
+    cv::Mat three_channel_mat_1;
+
+    drawLinePoint(frame0, three_channel_mat_0);
+    // drawLinePoint(frame1,three_channel_mat_1);
+    cv::imshow("window_name", three_channel_mat_0);
+    cv::waitKey(0);
   }
 
-} // namespace svo
+  return 0;
+}

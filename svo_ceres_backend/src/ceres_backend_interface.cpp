@@ -10,6 +10,9 @@
 #include "svo/motion_detector.hpp"
 #include "svo/outlier_rejection.hpp"
 
+#define SEGMENT_ENABLE_
+
+
 //! @todo Esimation of extrinsics not tested!
 DEFINE_double(extrinsics_sigma_rel_translation, 0.0,
               "Relative translation sigma (temporal) of camera extrinsics");
@@ -158,6 +161,7 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
     // Update the 3d points in map of the updated keyframes ----------------
     // Statistics
     backend_.updateAllActivePoints();
+    // backend_.updateAllActiveLines();
   }
 
   // Update last frame bundle ------------------------------------------------
@@ -223,6 +227,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
 
   // check for case when IMU measurements could not be added.
   // last_added_nframe_imu_ changed in loadmapfrombackend
+  //last_added_nframe_images_ change in this function
   if (last_added_nframe_imu_ == last_added_nframe_images_)
   {
     return;
@@ -232,7 +237,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
    last_frame_ = frame_bundle->at(0);
    */
 
-  std::lock_guard<std::mutex> lock(mutex_backend_);
+  std::lock_guard<std::mutex> lock(mutex_backend_);//for the optimization loop in another thread
 
   vk::Timer timer;
   timer.start();
@@ -289,6 +294,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
 
   // Adding new landmarks to backend -----------------------------------------
   size_t num_new_observations = 0;
+  size_t num_new_segment_observation=0;
   for (FramePtr& frame : *frame_bundle)
   {
     if (frame->isKeyframe())
@@ -296,6 +302,11 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
       backend_.setKeyframe(createNFrameId(frame->bundleId()), true);
       active_keyframes_.push_back(frame);
       addLandmarksAndObservationsToBackend(frame);
+//todo dgz
+#ifdef SEGMENT_ENABLE
+      addSegmentLandmarksAndObservationsToBackend(frame);
+#endif
+
     }
     else
     {
@@ -311,11 +322,32 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
           }
         }
       }
+//todo dgz
+#ifdef SEGMENT_ENABLE
+      std::vector<ceres::ResidualBlockId> result_;
+      for(size_t line_idx=0;line_idx<frame->numSegments();++line_idx )
+      {
+        if(frame->seg_landmark_vec_[line_idx] &&
+           backend_.isSegmentInEstimator(frame->seg_landmark_vec_[line_idx]->id()))
+           {
+            result_ = backend_.addSegmentObservation(frame,line_idx);
+            if(result_[0]!=nullptr && result_[1]!=nullptr)
+            {
+              ++num_new_segment_observation;
+            }
+           }
+        
+      }
+#endif
     }
   }
   VLOG(10) << "Backend: Added " << num_new_observations
            << " continued observation in non-KF to backend.";
 
+#ifdef SEGMENT_ENABLE
+  VLOG(10) << "Backend: added " << num_new_segment_observation
+           << " continued observation in non kf to backend";
+#endif
   if (options_.skip_optimization_when_tracking_bad)
   {
     if (frame_bundle->numLandmarksInBA() < options_.min_added_measurements)
@@ -323,6 +355,7 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
       LOG(WARNING) << "Too few visual measurements, skip optimization once.";
       skip_optimization_once_ = true;
     }
+
   }
 
   if (velocity_prior_added)
@@ -334,6 +367,9 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
   if (global_landmark_value_version_ < Point::global_map_value_version_)
   {
     backend_.updateFixedLandmarks();
+#ifdef SEGMENT_ENABLE
+    backend_.updateFixedSegmentLandmark(2);
+#endif
     VLOG(1) << "Update fixed landmarks in Ceres backend: "
             << global_landmark_value_version_ << " ==> "
             << Point::global_map_value_version_ << std::endl;
@@ -348,7 +384,129 @@ void CeresBackendInterface::bundleAdjustment(const FrameBundlePtr& frame_bundle)
   }
   wait_condition_.notify_one();
 }
+      
+#ifdef SEGMENT_ENABLE
+void CeresBackendInterface::addSegmentLandmarksAndObservationsToBackend(const FramePtr &frame)
+{
+  size_t n_skipped_parallax_seg = 0;
+  size_t n_skipped_few_obs_seg = 0;
+  size_t n_segment_already_in_backend = 0;
+  size_t n_new_observations_seg = 0;
+  size_t n_new_landmarks_seg = 0;
+  size_t n_skipped_not_corner_seg = 0;
 
+  std::vector<std::pair<size_t, size_t>> seg_idx_to_n_obs_map_fixed_lm;
+
+  // iterate through all segment
+  for (size_t seg_idx = 0; seg_idx < frame->numSegments(); ++seg_idx)
+  {
+    const LinePtr &line3d = frame->seg_landmark_vec_[seg_idx];
+    const FeatureType &type = frame->seg_type_vec_[seg_idx];
+
+    // check if segment is associated to landmark
+    if (line3d == nullptr)
+    {
+      continue;
+    }
+
+    // check if segment landmark was already in to backend, if yes just add observation.
+    if (backend_.isSegmentInEstimator(line3d->id()))
+    {
+      ++n_segment_already_in_backend;
+      std::vector<ceres::ResidualBlockId> result=backend_.addSegmentObservation(frame, seg_idx);
+
+      if (result[0]==nullptr||result[1]==nullptr)
+      {
+        LOG(WARNING) << "Failed to add an observation!";
+        continue;
+      }
+      ++n_new_observations_seg;
+    }
+    else
+    {
+      
+
+      // check if we have enough observations. Might not be the case if seed
+      // original frame was already dropped.
+      if (line3d->obs_.size() < options_.min_num_obs)
+      {
+        VLOG(10) << "segment with less than " << options_.min_num_obs
+                 << " observations! Only have " << line3d->obs_.size();
+        ++n_skipped_few_obs_seg;
+        continue;
+      }
+
+      DEBUG_CHECK(!std::isnan(line3d->spos_[0])) << "segment is nan!";
+
+      //      //! @todo tune this parameter, do we need it?
+      //      if(point->getTriangulationParallax() <
+      //      options_.min_parallax_thresh)
+      //      {
+      //        ++n_skipped_points_parallax;
+      //        continue;
+      //      }
+
+      //! @todo We should first get all candidate points and sort them
+      //!   according to parallax angle and num observations. afterwards only
+      //!   add best N observations.
+      // add the landmark
+      if (isFixedSegmentLandmark(type))
+      {
+        seg_idx_to_n_obs_map_fixed_lm.emplace_back(
+            std::make_pair(seg_idx, line3d->obs_.size()));
+        continue;
+      }
+      if (!backend_.addSegmentLandmark(line3d, 2,false)) // add the landmark_map and parameter block in ceres problem
+      {
+        LOG(ERROR) << "Failed to add a segment landmark!";
+        continue;
+      }
+      ++n_new_landmarks_seg;
+      // add an observation to the landmark
+      std::vector<ceres::ResidualBlockId> result=backend_.addSegmentObservation(frame, seg_idx);
+      if (result[0]==nullptr||result[1]==nullptr)
+      {
+        LOG(ERROR) << "Failed to add an observation!";
+        continue;
+      }
+      ++n_new_observations_seg;
+    }
+  } // landmarks
+
+  // for fixed landmarksseg_idx_to_n_obs_map_fixed_lm
+  std::sort(seg_idx_to_n_obs_map_fixed_lm.begin(),
+            seg_idx_to_n_obs_map_fixed_lm.end(),
+            [](const std::pair<size_t, size_t> &p1,
+               const std::pair<size_t, size_t> &p2)
+            {
+              return p1.second > p2.second;
+            }); // sort the landmarks base which landmark is most observate
+
+  size_t n_added_fixed_lm = 0;
+  for (size_t idx = 0; idx < seg_idx_to_n_obs_map_fixed_lm.size(); idx++)
+  {
+    const size_t cur_seg_idx = seg_idx_to_n_obs_map_fixed_lm[idx].first;
+    backend_.addSegmentLandmark(frame->seg_landmark_vec_[cur_seg_idx],2, true);
+    backend_.addSegmentObservation(frame, cur_seg_idx);
+    n_added_fixed_lm++;
+    if (backend_.numFixedSegmentLandmark() >=
+        optimizer_options_.max_fixed_seg_lm_in_ceres_)
+    {
+      break;
+    }
+  }
+
+  VLOG(6) << "Backend has: " << backend_.numFixedSegmentLandmark()
+          << " fixed segment landmarks out of " << backend_.numSegmentLandmark() << std::endl;
+  VLOG(6) << "Backend: Added " << n_new_landmarks_seg << " new segment landmarks";
+  VLOG(6) << "Backend: Added " << n_new_observations_seg << " new segment observations";
+  VLOG(6) << "Backend: segment Observations already in backend: "
+          << n_segment_already_in_backend;
+  VLOG(6) << "Backend: Adding points. Skipped because less than "
+          << options_.min_num_obs << " observations: " << n_skipped_few_obs_seg;
+
+}
+#endif
 // Add all landmarks and observations of frame (under certain criteria)
 void CeresBackendInterface::addLandmarksAndObservationsToBackend(
     const FramePtr& frame)
@@ -432,7 +590,7 @@ void CeresBackendInterface::addLandmarksAndObservationsToBackend(
             std::make_pair(kp_idx, point->obs_.size()));
         continue;
       }
-      if (!backend_.addLandmark(point, false))
+      if (!backend_.addLandmark(point, false))//add the landmark_map and parameter block in ceres problem
       {
         LOG(ERROR) << "Failed to add a landmark!";
         continue;
@@ -543,6 +701,12 @@ void CeresBackendInterface::updateFrameStateWithBackend(
   }
 }
 
+
+
+
+
+
+
 void CeresBackendInterface::updateBundleStateWithBackend(
     const FrameBundlePtr& frames, const bool get_speed_bias)
 {
@@ -628,7 +792,7 @@ void CeresBackendInterface::optimizationLoop()
       vk::Timer timer;
       {
         std::lock_guard<std::mutex> lock(w_T_correction_mut_);
-        if (is_w_T_valid_)
+        if (is_w_T_valid_)//loop cloos
         {
           backend_.removeAllPoseFixation();
           backend_.transformMap(
@@ -675,11 +839,14 @@ void CeresBackendInterface::optimizationLoop()
       {
         backend_.removeAllPoseFixation();
         backend_.setAllFixedLandmarksEnabled(true);
+        backend_.setAllFixedSegmentLandmarksEnabled(true);
         lock_to_fixed_landmarks_ = true;
       }
       else
       {
         backend_.setAllFixedLandmarksEnabled(false);
+        backend_.setAllFixedSegmentLandmarksEnabled(true);
+
         if (!backend_.hasFixedPose())
         {
           backend_.setOldestFrameFixed();
@@ -819,7 +986,7 @@ void CeresBackendInterface::updateActiveKeyframes()
     //if thr active front bundle_id older than oldest bundle id in deque, pop the active front bundle
     VLOG(40) << "Backend: marginalized frame with id "
              << active_keyframes_.front()->id();
-    active_keyframes_.pop_front();
+    active_keyframes_.pop_front();//oldest keyframe in the front
   }
 }
 

@@ -123,7 +123,7 @@ namespace svo
 
     size_t best_n_segment = 100;
     /// Maximum one feature per bucked with cell_size width and height
-    size_t cell_size = 30;
+    size_t cell_size = 16;
 
     /// Extract features on pyramid
     int max_level = 2;
@@ -160,7 +160,7 @@ namespace svo
     unsigned int scanIntervals = 2;
 
     // Minimum line segment length
-    int minLineLen = 20;
+    int minLineLen = 50;
     // Threshold used to check if a list of edge points for a line segment
     double lineFitErrThreshold = 0.2;
     // Threshold used to check if a new pixel is part of an already fit line segment

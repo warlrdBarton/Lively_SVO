@@ -55,6 +55,7 @@ struct CeresBackendOptions
   // minimum of fixed landmarks that is needed to remove pose fixation
   size_t remove_fixation_min_num_fixed_landmarks_ = 10u;
   size_t max_fixed_lm_in_ceres_ = 50u;
+  size_t max_fixed_seg_lm_in_ceres_ = 30u;
 };
 
 struct CeresBackendInterfaceOptions
@@ -68,6 +69,7 @@ struct CeresBackendInterfaceOptions
 
   /// (!) Only add corner features to backend?
   bool only_use_corners = false;
+
 
   /// (!) use the zero motion detection?
   bool use_zero_motion_detection = true;
@@ -254,6 +256,16 @@ protected:
    */
   void addLandmarksAndObservationsToBackend(const FramePtr& frame);
 
+
+
+/**
+ * @brief adds segment and observation of frame to the backend. 
+ * @param[in] frame single frame
+ * 
+*/
+#ifdef SEGMENT_ENABLE
+  void addSegmentLandmarksAndObservationsToBackend(const FramePtr& frame);
+#endif
   /**
    * @brief Introduce state for frame_bundle in backend, and add the
    *        corresponding IMU measurements.

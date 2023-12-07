@@ -204,6 +204,7 @@ Visualizer::Visualizer(const std::string& trace_dir,
   // Init ROS Marker Publishers
   pub_frames_ = pnh_.advertise<visualization_msgs::Marker>("keyframes", 10);
   pub_points_ = pnh_.advertise<visualization_msgs::Marker>("points", 10000);
+  pub_lines_  = pnh_.advertise<visualization_msgs::MarkerArray>("lines", 10);
   pub_imu_pose_ =
       pnh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose_imu", 10);
   pub_info_ = pnh_.advertise<svo_msgs::Info>("info", 10);
@@ -457,7 +458,10 @@ void Visualizer::publishImagesWithFeatures(const FrameBundlePtr& frame_bundle,
     img_msg.image = img_rgb;
     img_msg.encoding = sensor_msgs::image_encodings::BGR8;
     pub_images_.at(i).publish(img_msg.toImageMsg());
+
   }
+    // if(frame_bundle->at(0)->isKeyframe())CHECK(0);
+
 }
 
 void Visualizer::visualizeHexacopter(const Transformation& T_frame_world,
@@ -506,6 +510,58 @@ void Visualizer::visualizeGravity(const FrameBundlePtr& frame_bundle,
   }
 }
 #endif
+
+void Visualizer::visualizeSegmentLandmark(const FrameBundlePtr &frame_bundle,
+                                          const uint64_t timestamp)
+{
+
+  if (pub_lines_.getNumSubscribers() > 0)
+  {
+
+    visualization_msgs::MarkerArray marker_array;
+
+    size_t i = 0;
+    for (size_t idx = 0; idx < 2; idx++)
+    {
+      auto landmark_lines = frame_bundle->frames_.at(idx)->seg_landmark_vec_;
+      for (auto it = landmark_lines.begin(); it != landmark_lines.end(); ++it, ++i)
+      {
+
+        if(*it==nullptr)continue;
+
+        // 创建一个Marker
+        visualization_msgs::Marker marker;
+        marker.header.stamp = ros::Time().fromNSec(timestamp);
+        marker.header.frame_id = kWorldFrame;
+        marker.id = i;
+        // 使用当前时间作为时间戳
+        marker.type = visualization_msgs::Marker::LINE_LIST;
+        marker.scale.x = 0.03; // 设置线宽
+        marker.color.r = 0.3;
+        marker.color.g = 0.5;
+        marker.color.b = 0.25;
+        marker.color.a = 1.0;
+
+        // 设置Marker的两个点
+        geometry_msgs::Point p1, p2;
+        p1.x = (*it)->spos_(0);
+        p1.y = (*it)->spos_(1);
+        p1.z = (*it)->spos_(2);
+        p2.x = (*it)->epos_(0);
+        p2.y = (*it)->epos_(1);
+        p2.z = (*it)->epos_(2);
+        // std::cout<<line_3d.transpose()<<std::endl;
+        marker.points.push_back(p1);
+        marker.points.push_back(p2);
+
+        // 将Marker添加到MarkerArray中
+        marker_array.markers.push_back(marker);
+      }
+    }
+
+    pub_lines_.publish(marker_array);
+  }
+}
 
 void Visualizer::visualizeQuadrocopter(const Transformation& T_frame_world,
                                        const uint64_t timestamp)
