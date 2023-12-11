@@ -43,7 +43,7 @@ namespace svo
         struct Options
         {
             bool align_1d = false;             //!< in epipolar search: align patch 1D along epipolar line
-            int align_max_iter = 10;           //!< number of iterations for aligning the feature patches in gauss newton
+            int align_max_iter = 15;           //!< number of iterations for aligning the feature patches in gauss newton
             double max_epi_length_optim = 2.0; //!< max length of epipolar line to skip epipolar search and directly go to img align
             size_t max_epi_search_steps = 100; //!< max number of evaluations along epipolar line
             bool subpix_refinement = true;     //!< do gauss newton feature patch alignment after epipolar search

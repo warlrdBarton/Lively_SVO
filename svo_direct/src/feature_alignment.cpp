@@ -231,13 +231,15 @@ bool align2D(
   const int halfpatch_size_ = 4;
   const int patch_size_ = 8;
   const int patch_area_ = 64;
-  bool converged=false;
+  bool converged=false;//setting the patch_area_
 
   // We optimize feature position and two affine parameters.
   // compute derivative of template and prepare inverse compositional
   float __attribute__((__aligned__(16))) ref_patch_dx[patch_area_];
   float __attribute__((__aligned__(16))) ref_patch_dy[patch_area_];
-  Eigen::Matrix4f H; H.setZero();
+  Eigen::Matrix4f H; 
+  H.setZero();//setting hessian matrix，this matrix relate to the 2d point position,but why the dimension o the matrix is 4*4
+
 
   // compute gradient and hessian
   const int ref_step = patch_size_+2;
@@ -245,7 +247,7 @@ bool align2D(
   float* it_dy = ref_patch_dy;
   for(int y=0; y<patch_size_; ++y)
   {
-    uint8_t* it = ref_patch_with_border + (y+1)*ref_step + 1;
+    uint8_t* it = ref_patch_with_border + (y+1)*ref_step + 1;// 1 is border size
     for(int x=0; x<patch_size_; ++x, ++it, ++it_dx, ++it_dy)
     {
       Eigen::Vector4f J;
@@ -261,6 +263,9 @@ bool align2D(
       H += J*J.transpose();
     }
   }
+
+
+
   // If not use affine compensation, force update to be zero by
   // * setting the affine parameter block in H to identity
   // * setting the residual block to zero (see below)
@@ -283,7 +288,7 @@ bool align2D(
   if(each_step) each_step->push_back(Eigen::Vector2f(u, v));
 
   // termination condition
-  const float min_update_squared = 0.03*0.03; // TODO I suppose this depends on the size of the image (ate)
+  const float min_update_squared = 0.02*0.02; // TODO I suppose this depends on the size of the image (ate)
   const int cur_step = cur_img.step.p[0];
   //float chi2 = 0;
   Eigen::Vector4f update; update.setZero();

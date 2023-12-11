@@ -142,7 +142,7 @@ namespace svo
         for (size_t idx = 0; idx < frame->numFeatures(); idx++)
         {
           const FeatureType &type = frame->type_vec_[idx];
-          if (!isMapPoint(type) && type != FeatureType::kOutlier)
+          if (!isMapPoint(type) && type != FeatureType::kOutlier && type!=FeatureType::kLinePoint)
           {
             sec_feature_detector_->closeness_check_grid_.fillWithKeypoints(
                 frame->px_vec_.col(static_cast<int>(idx)));

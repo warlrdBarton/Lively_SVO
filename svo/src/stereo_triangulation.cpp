@@ -253,6 +253,7 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
 }
 
 
+
   StereoTriangulation::StereoTriangulation(
       const StereoTriangulationOptions &options,
       const AbstractDetector::Ptr &feature_detector)
@@ -441,8 +442,6 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
           ++seg_idx;
           continue;
         }
-
-
         frame0->px_vec_.col(now_idx) = new_line_px.col(linepoint_idx);
         frame0->f_vec_.col(now_idx) = new_line_f.col(linepoint_idx);
         frame0->score_vec_[now_idx] = new_line_scores(linepoint_idx);

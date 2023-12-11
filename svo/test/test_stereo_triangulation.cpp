@@ -594,7 +594,9 @@ int main(int argc, char **argv)
     Matcher matcher;
     matcher.options_.max_epi_search_steps = 500;
     matcher.options_.subpix_refinement = true;
-    const Transformation T_f1f0 = frame1->T_cam_body_ * frame0->T_body_cam_;
+    const Transformation T_cam_b_1=frame1->T_cam_body_;
+    const Transformation T_b_cam_0=frame0->T_body_cam_;
+    const Transformation T_f1f0 = T_cam_b_1 * T_b_cam_0;
     for (const size_t &i_ref : indices)
     {
       matcher.options_.align_1d = isEdgelet(frame0->type_vec_[i_ref]); // TODO(cfo): check effect

@@ -446,8 +446,8 @@ std::vector<Matcher::MatchResult> Matcher::findEpipolarMatchDirectSegment(
           e_matchresult};
 };
 
-Matcher::MatchResult Matcher::findEpipolarMatchDirect(
-    const Frame& ref_frame,//left
+Matcher::MatchResult Matcher::findEpipolarMatchDirect//
+(const Frame& ref_frame,//left
     const Frame& cur_frame,//right
     const Transformation& T_cur_ref,
     const FeatureWrapper& ref_ftr,
