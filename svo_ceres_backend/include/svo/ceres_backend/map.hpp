@@ -397,7 +397,7 @@ class Map
   /// @brief Solve the optimization problem.
   void solve()
   {
-    Solve(options, problem_.get(), &summary);
+    ceres::Solve(options, problem_.get(), &summary);
   }
 
  protected:

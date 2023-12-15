@@ -425,7 +425,7 @@ int main(int argc, char **argv)
     std::random_shuffle(indices.begin() + n_corners, indices.end());
 #endif
 
-
+ 
 #ifdef SEGMENT_ENABLE_stereo_triangulation
     // dgz todo
 
@@ -610,7 +610,7 @@ int main(int argc, char **argv)
       if (res == Matcher::MatchResult::kSuccess)
       {
         const Position xyz_world = frame0->T_world_cam() * (frame0->f_vec_.col(static_cast<int>(i_ref)) * depth);
-        PointPtr new_point(new Point(xyz_world));
+        PointPtr new_point(new svo::Point(xyz_world));
         frame0->landmark_vec_[i_ref] = new_point;
         frame0->track_id_vec_(static_cast<int>(i_ref)) = new_point->id(); // track id is
         new_point->addObservation(frame0, i_ref);

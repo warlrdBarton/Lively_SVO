@@ -7,11 +7,12 @@ find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 SET(CUDAFAST_ENABLE OFF)
 
+set(OpenCV_DIR /usr/local/lib/cmake/opencv4)
 
 if(CUDAFAST_ENABLE)
-find_package(OpenCV REQUIRED core imgproc highgui cudafeatures2d)
+find_package(OpenCV 4.1 REQUIRED core imgproc highgui cudafeatures2d)
 else()
-find_package(OpenCV REQUIRED core imgproc highgui )
+find_package(OpenCV 4.1 REQUIRED core imgproc highgui )
 endif()
 
 include(SvoSetup)
@@ -69,6 +70,9 @@ target_link_libraries(svo_test_feature_alignment ${PROJECT_NAME})
 
 cs_add_executable(test_elsed_derection test/test_elsed_derection.cpp)
 target_link_libraries(test_elsed_derection ${PROJECT_NAME})
+
+cs_add_executable(test_lsd_derection test/test_lsd_derection.cpp)
+target_link_libraries(test_lsd_derection ${PROJECT_NAME})
 
 ################################################################################
 ###

@@ -18,6 +18,7 @@
 #include <svo/common/camera.h>
 #include <svo/common/logging.h>
 #include <svo/direct/feature_detection_utils.h>
+#include <svo/line/precomp_custom.hpp>
 
 namespace svo
 {
@@ -35,6 +36,7 @@ namespace svo
                               std::ceil(options_.sec_grid_fineness * static_cast<double>(cam->imageWidth()) / options_.cell_size),
                               std::ceil(options_.sec_grid_fineness * static_cast<double>(cam->imageHeight()) / options_.cell_size))
   {
+
   }
 
   //------------------------------------------------------------------------------
@@ -540,6 +542,10 @@ void AllPixelsDetector::detect(
   {
   }
 
+
+  
+
+
   void ElsedDetector::detect(
       const ImgPyr &img_pyr,
       const cv::Mat &mask,
@@ -565,6 +571,50 @@ void AllPixelsDetector::detect(
           segs,
           grid_,
           elsed_);
+      fd_utils::fillSegment(
+          segs, // same level with corner
+          FeatureType::kSegment,
+          mask,
+          max_n_features,
+          seg_vec,
+          score_vec,
+          level_vec,
+          grad_vec,
+          types_vec,
+          grid_,
+          options_.segment_socre_threshold
+          );
+    }
+    resetGrid();
+  }
+   
+
+  void LSDDetector::detect(
+      const ImgPyr &img_pyr,
+      const cv::Mat &mask,
+      const size_t max_n_features,
+      Segments &seg_vec,
+      Scores &score_vec,
+      Levels &level_vec,
+      Gradients &grad_vec,
+      FeatureTypes &types_vec)
+  {
+
+    {
+      // Detect fast corners.
+      ScoreSegments segs(
+          grid_.n_cols * grid_.n_rows,
+          ScoreSegment(0, 0, 0, 0, options_.segment_socre_threshold,0,-1));
+      // std::cout<<"segs.size()"<<segs.size()<<std::endl;
+      std::vector<std::vector<cv::line_descriptor::KeyLine> > keylines;
+      fd_utils::LSDDetect(img_pyr,
+          options_.border,
+          options_.min_level,
+          options_.max_level,
+          segs,
+          grid_,
+          this->detecter_);
+
       fd_utils::fillSegment(
           segs, // same level with corner
           FeatureType::kSegment,

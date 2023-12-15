@@ -12,6 +12,9 @@
 #include <svo/common/camera_fwd.h>
 #include <svo/common/occupancy_grid_2d.h>
 #include <svo/direct/feature_detection_types.h>
+#include <opencv2/core.hpp>
+#include <svo/line/precomp_custom.hpp>
+
 
 #ifdef CUDAFAST_ENABLE
 #include <opencv2/cudafeatures2d.hpp>
@@ -366,7 +369,6 @@ public:
       Scores& len_vec,
       Levels& level_vec,
       Gradients &grad_vec,
-
       FeatureTypes& types_vec) override;
   
   private:
@@ -374,5 +376,53 @@ public:
 };
 
 
+class LSDDetector : public SegmentAbstractDetector
+{
+  public:
+  LSDDetector ( const SegmentDetectorOptions& options,
+      const CameraPtr& cam): SegmentAbstractDetector(options, cam){
+        loadParamFromSegmentDetectorOption(options,opts);
+       detecter_=cv::createLineSegmentDetector( opts.refine,
+                                                        opts.scale,
+                                                        opts.sigma_scale,
+                                                         opts.quant,
+                                                         opts.ang_th,
+                                                         opts.log_eps,
+                                                         opts.density_th,
+                                                         opts.n_bins);
+  }
+
+  virtual ~LSDDetector()=default;
+
+  virtual void detect(
+      const ImgPyr &img_pyr,
+      const cv::Mat &mask,
+      const size_t max_n_features,
+      Segments &seg_vec,
+      Scores &len_vec,
+      Levels &level_vec,
+      Gradients &grad_vec,
+      FeatureTypes &types_vec) override;
+
+  
+
+  inline void loadParamFromSegmentDetectorOption(const SegmentDetectorOptions& seg_options, cv::line_descriptor::LSDDetectorC::LSDOptions& lsdOption) {
+    // 将 SegmentDetectorOptions 的成员变量赋值给 LSDOptions 对应的成员变量
+    lsdOption.refine = seg_options.lsd_refine ? 1 : 0; // 转换bool为int
+    lsdOption.scale = seg_options.lsd_scale;
+    lsdOption.sigma_scale = seg_options.lsd_sigma_scale;
+    lsdOption.quant = seg_options.lsd_quant;
+    lsdOption.ang_th = seg_options.lsd_ang_th;
+    lsdOption.log_eps = seg_options.lsd_log_eps;
+    lsdOption.density_th = seg_options.lsd_density_th;
+    lsdOption.n_bins = static_cast<int>(seg_options.lsd_n_bins); // 转换size_t为int
+    // min_length成员在SegmentDetectorOptions中未定义，可以保持LSDOptions的默认值或者设为0
+    lsdOption.min_length = 0; 
+}
+private:
+cv::Ptr<cv::LineSegmentDetector> detecter_;
+  cv::line_descriptor::LSDDetectorC::LSDOptions opts;
+  // std::unique_ptr<cv::line_descriptor::LSDDetectorC> detecter_; 
+};
 
 } // namespace svo

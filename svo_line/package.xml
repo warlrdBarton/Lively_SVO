@@ -6,6 +6,7 @@
   </description>
   <version>0.0.1</version>
   <license>tbd</license>
+  <maintainer email="forster@ifi.uzh.ch">Christian Forster</maintainer>
 
   <author>dgz</author>
   
@@ -22,7 +23,10 @@
   <depend>svo_test_utils</depend>
   <depend>vikit_ros</depend>
   <depend>vikit_solver</depend>
-  <depend>opencv4</depend>
+
+  <depend>image_geometry</depend> 
+  <depend>sensor_msgs</depend> 
+  <depend>yaml-cpp</depend>
   
   <test_depend>gtest</test_depend>
 </package>

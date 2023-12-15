@@ -13,9 +13,13 @@
 #include <svo/tracker/feature_tracker.h>
 #include <svo/direct/feature_detection_utils.h>
 
-
-#define SEGMENT_ENABLE_stereo_triangulation
+#define SEGMENT_ENABLE_MATCH
+// #define SEGMENT_ENABLE_stereo_triangulation
 #define NAME_VALUE_LOG(x) std::cout << #x << ": \n" << (x) << std::endl;
+
+#ifdef SEGMENT_ENABLE_MATCH
+#include <svo/line/line_match.h>
+#endif
 
 namespace svo
 {
@@ -44,6 +48,8 @@ void nonmax_line(const std::vector<Eigen::Vector2i> &corners, const std::vector<
     nonmax_corners.push_back(idx);
     nonmax:;
   }
+
+
 }
 void project_all_points_onto_line(const Eigen::Vector3d& line_direction, const Eigen::Vector3d& point_on_line, std::vector<Position>& points) {
     // 确保方向向量是单位向量
@@ -252,6 +258,48 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
   
 }
 
+ void describeKeyline(const cv::Ptr<cv::line_descriptor::BinaryDescriptor> descriptor_,const ImgPyr &img_pyr,std::vector<cv::line_descriptor::KeyLine>& kls,cv::Mat & desc)
+  {
+      descriptor_->compute(img_pyr[0], kls, desc);
+  }
+
+
+  void transform2keyline(const ImgPyr &img_pyr, const Segments& seg_vec,const Levels& levels_vec, std::vector<cv::line_descriptor::KeyLine>& keylines)
+  {
+  int class_counter = -1;
+    for(size_t idx=0;idx<static_cast<size_t>(seg_vec.cols());idx++)
+    {
+      cv::line_descriptor::KeyLine kl;
+      cv::Vec4f extremes(seg_vec.col(idx)(0),seg_vec.col(idx)(1),seg_vec.col(idx)(2),seg_vec.col(idx)(3));
+
+      /* check data validity */
+      double scale=1/(1<<levels_vec(idx));
+      /* fill KeyLine's fields */
+      kl.startPointX = extremes[0] ;
+      kl.startPointY = extremes[1] ;
+      kl.endPointX = extremes[2] ;
+      kl.endPointY = extremes[3] ;
+      kl.sPointInOctaveX = extremes[0]*scale;
+      kl.sPointInOctaveY = extremes[1]*scale;
+      kl.ePointInOctaveX = extremes[2]*scale;
+      kl.ePointInOctaveY = extremes[3]*scale;
+      kl.lineLength = (float) sqrt( pow( kl.sPointInOctaveX - kl.ePointInOctaveX, 2 ) + pow( kl.sPointInOctaveY  - kl.ePointInOctaveY, 2 ) );
+
+      /* compute number of pixels covered by line */
+      cv::LineIterator li( img_pyr[levels_vec(idx)], cv::Point2f( kl.sPointInOctaveX, kl.sPointInOctaveY ), cv::Point2f( kl.ePointInOctaveX, kl.ePointInOctaveY) );
+      kl.numOfPixels = li.count;
+
+      kl.angle = atan2( (  kl.ePointInOctaveY - kl.sPointInOctaveY ), ( kl.ePointInOctaveX -  kl.sPointInOctaveX) );
+      kl.class_id = ++class_counter;
+      kl.octave = levels_vec(idx);
+      kl.size = ( kl.ePointInOctaveX - kl.sPointInOctaveX ) * ( kl.ePointInOctaveY - kl.sPointInOctaveY );
+      kl.response = kl.lineLength / std::max(img_pyr[levels_vec(idx)].cols, img_pyr[levels_vec(idx)].rows );
+      kl.pt = cv::Point2f( ( kl.ePointInOctaveX + kl.sPointInOctaveX ) / 2, ( kl.ePointInOctaveY + kl.sPointInOctaveY ) / 2 );
+
+      keylines.push_back( kl );
+    }
+      
+  }
 
 
   StereoTriangulation::StereoTriangulation(
@@ -268,6 +316,11 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
       const SegmentAbstractDetector::Ptr &segment_detector)
       : options_(options), feature_detector_(feature_detector), segment_detector_(segment_detector)
   {
+  #ifdef SEGMENT_ENABLE_MATCH
+    line_match.reset(new svo::line_match);
+    descriptor_=cv::line_descriptor::BinaryDescriptor::createBinaryDescriptor();
+
+  #endif
     ;
   }
   
@@ -332,6 +385,117 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
     std::random_shuffle(indices.begin() + n_corners, indices.end());
 #endif
 
+#ifdef SEGMENT_ENABLE_MATCH
+      Segments new_seg;
+      Scores new_seg_score;
+      FeatureTypes new_seg_types;
+      Levels new_seg_levels;
+      Gradients new_seg_grads;
+
+      segment_detector_->detect(
+          frame0->img_pyr_, frame0->getMask(), segment_detector_->options_.max_segment_num, new_seg,
+          new_seg_score, new_seg_levels,new_seg_grads,new_seg_types);
+      Bearings new_seg_f;
+      frame_utils::computeSegmentNormalizedBearingVectors(new_seg, *frame0->cam(), &new_seg_f);
+      const long n_seg_old = static_cast<long>(frame0->numSegments());
+      const long n_seg_new = static_cast<long>(new_seg.cols());
+      // frame0->check_segment_infolist_vaild();
+       if (new_seg.cols() == 0)
+      {
+        SVO_ERROR_STREAM("Stereo Triangulation: No segment detected.");
+      }
+      frame0->resizeSegmentStorage(n_seg_old + static_cast<size_t>(n_seg_new));
+
+      frame0->seg_vec_.middleCols(n_seg_old, n_seg_new) = new_seg;
+      frame0->seg_f_vec_.middleCols(n_seg_old * 2, n_seg_new * 2) = new_seg_f; // note add 2 time segment num
+      frame0->seg_level_vec_.segment(n_seg_old, n_seg_new) = new_seg_levels;
+      frame0->seg_score_vec_.segment(n_seg_old, n_seg_new) = new_seg_score;
+      frame0->seg_grad_vec_.middleCols(n_seg_old , n_seg_new ) = new_seg_grads;
+      size_t left_frame_segment_idx=frame0->num_segments_;
+
+      frame0->num_segments_ += static_cast<size_t>(n_seg_new);
+      frame0->seg_type_vec_.insert(
+          frame0->seg_type_vec_.begin() + n_seg_old, new_seg_types.cbegin(), new_seg_types.cend());
+
+
+      std::vector<cv::line_descriptor::KeyLine> keyline_l;
+      std::vector<cv::line_descriptor::KeyLine> keyline_r;
+      cv::Mat desc_l,desc_r;
+
+
+      transform2keyline(frame0->img_pyr_,new_seg,new_seg_levels,keyline_l);
+      describeKeyline(descriptor_,frame0->img_pyr_,keyline_l,desc_l);
+
+      Segments new_seg_r;
+      Scores new_seg_score_r;
+      FeatureTypes new_seg_types_r;
+      Levels new_seg_levels_r;
+      Gradients new_seg_grads_r;
+
+      segment_detector_->detect(
+          frame1->img_pyr_, frame1->getMask(), segment_detector_->options_.max_segment_num, new_seg_r,
+          new_seg_score_r, new_seg_levels_r,new_seg_grads_r,new_seg_types_r);
+
+      transform2keyline(frame1->img_pyr_,new_seg_r,new_seg_levels_r,keyline_r);
+      describeKeyline(descriptor_,frame1->img_pyr_,keyline_r,desc_r);
+      std::vector<int>matches_12;//two frame segment line corresponding
+      std::vector<shared_ptr<svo::Line>> lines_3d;
+      line_match->matchStereoLines(keyline_l,keyline_r,desc_l,desc_r,matches_12,lines_3d);
+
+      size_t i_ref,i_cur,match_idx;
+      size_t n_segment_match_succeded=0,n_segment_match_failed=0;
+      Bearings new_seg_f_r;
+
+        const size_t n_desired_segment =
+        options_.triangulate_n_segment - frame0->numSegmentLandmarks(); // segmentlandmark corresponding the fixed line
+    if (frame1->num_segments_ + n_desired_segment > frame1->seg_landmark_vec_.size())
+    {
+      frame1->resizeSegmentStorage(frame1->num_segments_ + n_desired_segment);
+      // frame1->check_segment_infolist_vaild();
+    }
+      for(size_t idx=0;idx< matches_12.size();++idx)
+      {
+        if(n_segment_match_succeded>=n_desired_segment)break;
+        if(matches_12[idx]==-1){
+          ++n_segment_match_failed;
+          continue;
+          }
+
+        i_ref=idx+left_frame_segment_idx;
+        match_idx=matches_12.at(idx);
+        LinePtr new_seg=lines_3d[idx];
+        new_seg->epos_=frame0->T_world_cam()*new_seg->epos_;
+        new_seg->spos_=frame0->T_world_cam()*new_seg->spos_;
+        frame0->seg_landmark_vec_[i_ref]=new_seg;
+        frame0->seg_track_id_vec_(static_cast<int>(i_ref)) = new_seg->id(); // track id is
+        new_seg->addObservation(frame0, i_ref);
+
+        const size_t i_cur = frame1->num_segments_;
+        frame1->seg_type_vec_[i_cur] =  new_seg_types_r[match_idx];
+        frame1->seg_level_vec_[i_cur] = new_seg_levels_r[match_idx];
+
+        frame1->seg_vec_.col(i_cur) = new_seg_r.col(match_idx);
+         
+      frame_utils::computeSegmentNormalizedBearingVectors(new_seg_r.col(match_idx), *frame1->cam(), &new_seg_f_r);
+        frame1->seg_f_vec_.col(i_cur * 2) = new_seg_f.col(0);
+        frame1->seg_f_vec_.col(i_cur * 2 + 1) = new_seg_f.col(1);
+        frame1->seg_score_vec_[i_cur] = new_seg_score_r[match_idx];
+        // GradientVector g = matcher.A_cur_ref_ * ref_ftr_s.grad;
+        // frame1->seg_grad_vec_.col(i_cur) = g.normalized();
+
+        frame1->seg_landmark_vec_[i_cur] = new_seg;
+        frame1->seg_track_id_vec_(i_cur) = new_seg->id();
+        new_seg->addObservation(frame1, i_cur);
+        frame1->num_segments_++;
+        ++n_segment_match_succeded;
+      }
+       VLOG(20) << "Stereo: segment match " << n_segment_match_succeded << " features,"
+             << n_segment_match_failed << " failed.";
+
+      
+#endif
+
+
 
 #ifdef SEGMENT_ENABLE_stereo_triangulation
     // dgz todo
@@ -384,7 +548,7 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
       // std::random_shuffle(seg_indices.begin() + n_segments, seg_indices.end());
       // std::random_shuffle(seg_indices.begin() + n_segments, seg_indices.end());
 
-
+      
 //----------------------------------------------------------------------------------
 
       // std::cout<<"start line point process"<<std::endl;
@@ -538,6 +702,8 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
         break;
     }
 
+
+
 #ifdef SEGMENT_ENABLE_stereo_triangulation
     size_t n_segment_succeded = 0;
     size_t n_segment_failed = 0;
@@ -594,8 +760,7 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
         new_seg->addObservation(frame1, i_cur);
         frame1->num_segments_++;
         ++n_segment_succeded;
-        CHECK(static_cast<int>(frame1->seg_type_vec_[i_cur])>8);
-        CHECK(static_cast<int>(frame0->seg_type_vec_[i_ref])>8);
+
 
         auto range = frame0->line_point_idx_vec_.equal_range(i_ref);
         std::vector<Position> all_point;

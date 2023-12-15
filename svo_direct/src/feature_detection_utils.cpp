@@ -88,6 +88,9 @@ namespace svo
       case DetectorType::kELSEDSegment: 
         detector.reset(new ElsedDetector(options, cam));
         break;
+      case DetectorType::kLSDSegment: 
+        detector.reset(new ElsedDetector(options, cam));
+        break;
       
       default:
         SVO_ERROR_STREAM("Detector unknown!");
@@ -1238,6 +1241,59 @@ namespace svo
       }
 
     } // angle_hist
+
+
+    void LSDDetect(const ImgPyr &img_pyr,
+        const int border,
+        const size_t min_level,
+        const size_t max_level,
+        ScoreSegments &segs, // in this scope to add segment start mid end 3 point
+        OccupandyGrid2D &grid,
+        cv::Ptr<cv::LineSegmentDetector> detecter_)
+    {
+      CHECK_EQ(segs.size(), grid.occupancy_.size());
+      CHECK_LE(max_level, img_pyr.size() - 1);
+      int x0, y0, x1, y1;
+      double score;
+      int index=0;// vaild segment index
+      for (size_t level = min_level; level <= max_level; ++level)
+      {
+        const int scale = (1 << level);
+        std::vector<cv::Vec4f> octave_lines;
+        detecter_->detect( img_pyr[level], octave_lines );
+        const int maxw = img_pyr[level].cols - border;
+        const int maxh = img_pyr[level].rows - border;
+        
+        for (const auto &score_seg_item : octave_lines)
+        {
+
+          x0 = score_seg_item[0];
+          y0 = score_seg_item[1];
+          x1 = score_seg_item[2];
+          y1 = score_seg_item[3];
+          score = (float) sqrt( pow( score_seg_item[0] - score_seg_item[2], 2 ) + pow( score_seg_item[1] - score_seg_item[3], 2 ));
+          if (x0 < border || y0 < border || x0 >= maxw || y0 >= maxh)
+            continue;
+          if (x1 < border || y1 < border || x1 >= maxw || y1 >= maxh)
+            continue;
+          const size_t k_0 = grid.getCellIndex(x0, y0, scale);
+          const size_t k_1 = grid.getCellIndex(x1, y1, scale);
+          const size_t k_middle= grid.getCellIndex((x0+x1)/2, (y0+y1)/2, scale);
+          if (grid.occupancy_.at(k_0) || grid.occupancy_.at(k_1)|| grid.occupancy_.at(k_middle))
+            continue;
+          if (score > segs.at(k_0).score_)
+            segs.at(k_0) = svo::ScoreSegment(x0* scale, y0* scale, x1* scale, y1* scale, score,level,index);
+          if (score > segs.at(k_1).score_)
+            segs.at(k_1) = segs.at(k_0);
+          if (score > segs.at(k_middle).score_)
+            segs.at(k_middle) = segs.at(k_0);
+
+          ++index;
+        }
+
+      }
+    }
+    
 
     void ElSEDdetect(
         const ImgPyr &img_pyr,

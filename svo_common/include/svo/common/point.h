@@ -251,7 +251,7 @@ public:
   /// Destructor.
   ~Point();
 
-  // no copy
+  // no copy 
   Point(const Point&) = delete;
   Point& operator=(const Point&) = delete;
 

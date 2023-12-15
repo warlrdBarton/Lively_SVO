@@ -76,7 +76,8 @@ namespace svo
     kCanny,            ///< Canny edge detector
     kSobel,            ///< Sobel edge detector
     kCudaFastGrad,     ///< cuda Combined Fast and Gradient detector
-    kELSEDSegment      /// < combined fast , gradien and elsed segment detector
+    kELSEDSegment,      /// < combined fast , gradien and elsed segment detector
+    kLSDSegment      /// < combined fast , gradien and elsed segment detector
   };
 
   //------------------------------------------------------------------------------
@@ -181,6 +182,19 @@ namespace svo
     // List of junction size that will be tested (in pixels)
     std::vector<int> listJunctionSizes = {5, 7, 9};
     //---------------elsed param-------------------------------------
+
+
+    //---------------LSD param---------------------------------------
+    size_t lsd_nfeatures     = 300;        // number of LSD lines detected (set to 0 if keeping all lines)
+    bool lsd_refine        = 0;          // the way of refining or not the detected lines
+    double lsd_scale         = 1.2;        // scale of the image that will be used to find the lines
+    double lsd_sigma_scale   = 0.6;        // sigma for Gaussian filter
+    double lsd_quant         = 2.0;        // bound to the quantization error on the gradient norm
+    double lsd_ang_th        = 22.5;       // gradient angle tolerance in degrees
+    double lsd_log_eps       = 1.0;        // detection threshold (only for advanced refinement)
+    double lsd_density_th    = 0.6;        // minimal density of aligned region points in the enclosing rectangle
+    size_t lsd_n_bins        = 1024;       // number of bins in pseudo-ordering of gradient modulus
+    //---------------LSD param--------------------------------------
   };
 
 } // namespace svo

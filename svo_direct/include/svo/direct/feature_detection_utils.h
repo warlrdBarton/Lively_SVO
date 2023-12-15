@@ -226,6 +226,13 @@ void fillSegment(
     double threshold
 );
 
+    void LSDDetect(const ImgPyr &img_pyr,
+        const int border,
+        const size_t min_level,
+        const size_t max_level,
+        ScoreSegments &segs, // in this scope to add segment start mid end 3 point
+        OccupandyGrid2D &grid,
+        cv::Ptr<cv::LineSegmentDetector> detecter_);
 
-} // feature_detection_utils
+}; // feature_detection_utils
 } // namespace svo
