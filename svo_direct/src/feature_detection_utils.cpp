@@ -910,7 +910,7 @@ namespace svo
           case FeatureType::kSegment:
                       cv::line(*img_rgb, cv::Point2f(seg(0) , seg(1)),
                      cv::Point2f(seg(2), seg(3)),
-                     cv::Scalar(0, 0, 255), 2);                     
+                     cv::Scalar(0, 0, 255), 2);      
             break;
           case FeatureType::kSegmentSeed:
                       cv::line(*img_rgb, cv::Point2f(seg(0) , seg(1)),

@@ -13,8 +13,8 @@
 #include <svo/tracker/feature_tracker.h>
 #include <svo/direct/feature_detection_utils.h>
 
-#define SEGMENT_ENABLE_MATCH
-// #define SEGMENT_ENABLE_stereo_triangulation
+// #define SEGMENT_ENABLE_MATCH
+#define SEGMENT_ENABLE_stereo_triangulation
 #define NAME_VALUE_LOG(x) std::cout << #x << ": \n" << (x) << std::endl;
 
 #ifdef SEGMENT_ENABLE_MATCH

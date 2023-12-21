@@ -161,7 +161,9 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
     // Update the 3d points in map of the updated keyframes ----------------
     // Statistics
     backend_.updateAllActivePoints();
-    // backend_.updateAllActiveLines();
+#ifdef SEGMENT_ENABLE
+    backend_.updateAllActiveLines();
+#endif
   }
 
   // Update last frame bundle ------------------------------------------------

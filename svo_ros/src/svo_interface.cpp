@@ -204,6 +204,7 @@ void SvoInterface::publishResults(
       visualizer_->publishImagesWithFeatures(
             svo_->getLastFrames(), timestamp_nanoseconds,
             draw_boundary);
+      // CHECK(0)<<"test matching result";
 #ifdef SVO_LOOP_CLOSING
       // detections
       if (svo_->lc_)

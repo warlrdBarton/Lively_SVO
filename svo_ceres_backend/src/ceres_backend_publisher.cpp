@@ -193,7 +193,7 @@ namespace svo
       pt.z = p[2];
       pc.push_back(pt);
     }
-    pub_points_.publish(pc);
+    pub_points_.publish(pc);//backend_points
   }
 
   void CeresBackendPublisher::publishBackendSegmentLandmarks(
