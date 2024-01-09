@@ -49,7 +49,7 @@ src/stereoFeatures.cpp
   )
 
 cs_add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES} )
 target_compile_options(${PROJECT_NAME} PRIVATE -g)
 
 

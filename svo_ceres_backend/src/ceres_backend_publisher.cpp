@@ -50,6 +50,7 @@ namespace svo
     publishImuPose(state, timestamp, seq);
     publishImuTwist(state, timestamp, seq);
     publishBackendLandmarks(timestamp);
+    //todo publish
     publishBackendSegmentLandmarks(timestamp);
   }
 

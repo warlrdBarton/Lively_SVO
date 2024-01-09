@@ -5,7 +5,7 @@
 
 namespace svo
 {
-     void region2Mat(cv::Mat &P, const cv::Mat seq, int seq_rows, int seq_cols, int t , int l , int mat_rows , int mat_cols )
+    void region2Mat(cv::Mat &P, const cv::Mat seq, int seq_rows, int seq_cols, int t , int l , int mat_rows , int mat_cols )
     {
         if (l != -1)
         {
@@ -137,15 +137,15 @@ namespace svo
         }
         catch (YAML::Exception &e)
         {
-            std::cerr << "YAML 异常: " << e.what() << std::endl;
+            std::cerr << "YAML error: " << e.what() << std::endl;
         }
         catch (std::exception &e)
         {
-            std::cerr << "标准异常: " << e.what() << std::endl;
+            std::cerr << "stander error: " << e.what() << std::endl;
         }
         catch (...)
         {
-            std::cerr << "未知异常." << std::endl;
+            std::cerr << "unknown error" << std::endl;
         }
         cv::Mat k_cam0 = (cv::Mat_<double>(3, 3) << k_seq_0.at<double>(0, 0), 0, k_seq_0.at<double>(0, 2), 0, k_seq_0.at<double>(0, 1), k_seq_0.at<double>(0, 3), 0, 0, 1);
         cv::Mat k_cam1 = (cv::Mat_<double>(3, 3) << k_seq_1.at<double>(0, 0), 0, k_seq_1.at<double>(0, 2), 0, k_seq_1.at<double>(0, 1), k_seq_1.at<double>(0, 3), 0, 0, 1); // 两个相机的内参

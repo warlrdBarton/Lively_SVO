@@ -14,7 +14,7 @@
 #include <svo/direct/feature_detection_utils.h>
 
 // #define SEGMENT_ENABLE_MATCH
-#define SEGMENT_ENABLE_stereo_triangulation
+#define SEGMENT_ENABLE_STEREO_TRIANGULATION
 #define NAME_VALUE_LOG(x) std::cout << #x << ": \n" << (x) << std::endl;
 
 #ifdef SEGMENT_ENABLE_MATCH
@@ -372,7 +372,7 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
 
     // We only want a limited number of features. Therefore, we create a random
     // vector of indices that we will process.
-#ifndef SEGMENT_ENABLE_stereo_triangulation
+#ifndef SEGMENT_ENABLE_STEREO_TRIANGULATION
     std::vector<size_t> indices(static_cast<size_t>(n_new));
     std::iota(indices.begin(), indices.end(), n_old);
     long n_corners = std::count_if(
@@ -497,7 +497,7 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
 
 
 
-#ifdef SEGMENT_ENABLE_stereo_triangulation
+#ifdef SEGMENT_ENABLE_STEREO_triangulation
     // dgz todo
 
       Segments new_seg;
@@ -640,7 +640,7 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
     // need the minimum num feature to stereo triangulate
     // note: we checked already at start that n_desired will be larger than 0
 
-#ifdef SEGMENT_ENABLE_stereo_triangulation
+#ifdef SEGMENT_ENABLE_STEREO_TRIANGULATION
     // dgztodo
     const size_t n_desired_segment =
         options_.triangulate_n_segment - frame0->numSegmentLandmarks(); // segmentlandmark corresponding the fixed line
@@ -704,7 +704,7 @@ void bresenhamLine(const Segments &line, std::vector<Eigen::Vector2i> &linePoint
 
 
 
-#ifdef SEGMENT_ENABLE_stereo_triangulation
+#ifdef SEGMENT_ENABLE_STEREO_TRIANGULATION
     size_t n_segment_succeded = 0;
     size_t n_segment_failed = 0;
     FloatType depth_s = 0.0;
