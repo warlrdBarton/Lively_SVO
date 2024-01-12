@@ -12,6 +12,8 @@
 #include <svo/common/camera_fwd.h>
 #include <svo/common/transformation.h>
 
+#define ENABLE_LIVELY_PROPAGATION
+
 namespace svo {
 
 // forward declarations
@@ -41,6 +43,8 @@ public:
   std::string remote_input_;
   std::unique_ptr<std::thread> imu_thread_;
   std::unique_ptr<std::thread> image_thread_;
+  std::unique_ptr<std::thread> propagation_thread_;
+
 
   // SVO modules.
   std::shared_ptr<FrameHandlerBase> svo_;
@@ -98,6 +102,7 @@ public:
   void imuLoop();
   void monoLoop();
   void stereoLoop();
+  void propagationLoop();
 };
 
 } // namespace svo

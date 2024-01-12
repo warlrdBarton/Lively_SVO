@@ -907,8 +907,14 @@ void CeresBackendInterface::optimizationLoop()
       last_state_.setAccBias(speed_and_bias.tail<3>());
       last_state_.setGyroBias(speed_and_bias.segment<3>(3));
       
+      setLastStateUpdateFlagPropgation(true);
+      while (getLastStateUpdateFlagPropgation()) {
+        // spinlock here utill propagation thread commpleted state update 
+        // avoid race condition
+      }
+
       // publish current estimation
-      if (publisher_)
+      if (publisher_) 
       {
         publisher_->publish(last_state_, last_added_frame_stamp_ns_,
                             last_optimized_nframe_.load());
@@ -1029,5 +1035,38 @@ void CeresBackendInterface::setReinitStartValues(
   backend_.reinit_T_WS_ = Tws;
   backend_.reinit_timestamp_start_ = timestamp;
 }
+
+
+// John added
+
+void CeresBackendInterface::propagate(const double current_timestamp) {
+  if(getLastStateUpdateFlagPropgation()) { // Read latest ceres backend state
+    setLastStateUpdateFlagPropgation(false);
+    // TODO: reset last state and bias and reinit preint
+    // TODO: get measurements from Frame timestamp to front of imu_handler
+    // TODO: add measurementS to preint  
+  }
+  if (getMeasurementUpdateFlagPropgation()) { // check IMU-end update
+    // TODO: get the front measurement form imu_handler
+    // TODO: modified last_measurement in preint
+  }
+
+  //TODO: "Check for null before the propagation status is set for the first time."
+  predictCurrentState(current_timestamp);
+}
+
+void CeresBackendInterface::predictCurrentState(const double current_timestamp) {
+  Transformation T_WS_propagated;
+  Eigen::Vector3d W_v_B_propagated, W_g_B_propagated;
+  // TODO: Actual Step Propagation From Last State with preint
+  if (publisher_) {
+    publisher_->publishPropagationOdometry(current_timestamp, T_WS_propagated, 
+                                           W_v_B_propagated, W_g_B_propagated);
+  }
+}
+
+/* TODO: modify preinit class;
+          - 
+*/
 
 }  // namespace svo

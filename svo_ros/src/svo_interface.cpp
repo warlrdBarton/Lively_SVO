@@ -140,6 +140,10 @@ SvoInterface::~SvoInterface()
     imu_thread_->join();
   if (image_thread_)
     image_thread_->join();
+#ifdef ENABLE_LIVELY_PROPAGATION
+  if (propagation_thread_)
+    propagation_thread_->join();
+#endif
   VLOG(1) << "Destructed SVO.";
 }
 
@@ -449,6 +453,10 @@ void SvoInterface::subscribeImu()
 {
   imu_thread_ = std::unique_ptr<std::thread>(
         new std::thread(&SvoInterface::imuLoop, this));
+#ifdef ENABLE_LIVELY_PROPAGATION
+  propagation_thread_ = std::unique_ptr<std::thread>(
+        new std::thread(&SvoInterface::propagationLoop, this));
+#endif
   sleep(3);
 }
 
@@ -528,5 +536,28 @@ void SvoInterface::stereoLoop()
     queue.callAvailable(ros::WallDuration(0.1));
   }
 }
+
+void SvoInterface::propagationLoop() {
+  ROS_INFO("SvoNode: Started IMU pose propagation loop.");
+
+  const double loop_frequency = 400.0;   // control loop frequency
+  ros::Duration loop_interval(1.0 / loop_frequency);
+
+  ros::Time last_time = ros::Time::now();
+
+  while (ros::ok() && !quit_) {
+    ros::Time now = ros::Time::now();
+    ceres_backend_interface_->propagate(now.toSec());
+    ros::Time next_time = last_time + loop_interval;
+
+    if (now < next_time) {
+      ros::Duration sleep_time = next_time - now;
+      sleep_time.sleep();
+    }
+
+    last_time = next_time;
+  }
+}
+
 
 } // namespace svo

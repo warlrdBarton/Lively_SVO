@@ -1,6 +1,7 @@
 #include "svo/ceres_backend_publisher.hpp"
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -41,6 +42,7 @@ namespace svo
     pub_lines_ = pnh_.advertise<visualization_msgs::MarkerArray>("backend_lines", 10);
 
     pub_twist_ = pnh_.advertise<geometry_msgs::TwistStamped>("twist_imu", 10);
+    pub_propagation_odometry_ = pnh_.advertise<nav_msgs::Odometry>("propagation_odometry", 10);
   }
 
   void CeresBackendPublisher::publish(ViNodeState &state,
@@ -284,4 +286,42 @@ namespace svo
     pub_lines_.publish(marker_array);
   }
 
+  void CeresBackendPublisher::publishPropagationOdometry(const int64_t timestamp,
+                                                         const Transformation& T_WS,
+                                                         const Eigen::Vector3d& W_v_B,
+                                                         const Eigen::Vector3d& W_g_B
+                                                         ) {
+    size_t n_propagation_odometry__sub = pub_propagation_odometry_.getNumSubscribers();
+    if (n_propagation_odometry__sub == 0) {return;}
+    
+    VLOG(1000) << "Publish propagation Odometry";
+
+    ros::Time time = ros::Time().fromNSec(timestamp);
+    Eigen::Quaterniond q = T_WS.getRotation().toImplementation();
+    Eigen::Vector3d p = T_WS.getPosition();
+
+    nav_msgs::OdometryPtr msg_odometry(new nav_msgs::Odometry);
+    msg_odometry->header.stamp = time;
+    msg_odometry->header.frame_id = kWorldFrame;
+    msg_odometry->child_frame_id = kWorldFrame; //TODO: change to the correct child_frame_id
+    msg_odometry->pose.pose.position.x = p[0];
+    msg_odometry->pose.pose.position.y = p[1];
+    msg_odometry->pose.pose.position.z = p[2];
+    msg_odometry->pose.pose.orientation.x = q.x();
+    msg_odometry->pose.pose.orientation.y = q.y();
+    msg_odometry->pose.pose.orientation.z = q.z();
+    msg_odometry->pose.pose.orientation.w = q.w();
+    // for (size_t i = 0; i < 36; ++i) 
+    //   msg_odometry->pose.covariance[i] = 0;
+    msg_odometry->twist.twist.linear.x = W_v_B.x();
+    msg_odometry->twist.twist.linear.y = W_v_B.y();
+    msg_odometry->twist.twist.linear.z = W_v_B.z();
+    msg_odometry->twist.twist.angular.x = W_g_B.x();
+    msg_odometry->twist.twist.angular.y = W_g_B.y();
+    msg_odometry->twist.twist.angular.z = W_g_B.z();
+    // for (size_t i = 0; i < 36; ++i)
+    //   msg_odometry->twist.covariance[i] = 0;
+    
+    pub_propagation_odometry_.publish(msg_odometry);
+  }
 } // namespace svo

@@ -17,6 +17,7 @@ struct MotionDetectorOptions;
 class MotionDetector;
 class OutlierRejection;
 class ImuHandler;
+class PreintegratedImuMeasurement;
 
 struct CeresBackendOptions
 {
@@ -339,6 +340,21 @@ protected:
   uint64_t global_landmark_value_version_ = 0u;
   bool image_motion_detector_stationary_ = false;
   bool imu_motion_detector_stationary_ = false;
-};
 
+public:
+  void propagate(const double current_timestamp);
+  inline void setLastStateUpdateFlagPropgation(bool flag) {is_last_state_updated_.store(flag, std::memory_order_release);}
+  inline void setMeasurementUpdateFlagPropgation(bool flag) {is_measurement_updated_.store(flag, std::memory_order_release);}
+  inline bool getLastStateUpdateFlagPropgation() {return is_last_state_updated_.load(std::memory_order_acquire);}
+  inline bool getMeasurementUpdateFlagPropgation() {return is_measurement_updated_.load(std::memory_order_acquire);}
+protected:
+  void predictCurrentState(const double current_timestamp);
+
+  std::atomic_bool is_last_state_updated_ { false };
+  std::atomic_bool is_measurement_updated_ { false };
+  Transformation last_state_T_WS_;
+  Eigen::Vector3d last_state_W_v_B;
+  std::shared_ptr<PreintegratedImuMeasurement> preint_propagation_; 
+  
+};
 }  // namespace svo

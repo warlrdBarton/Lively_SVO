@@ -41,6 +41,10 @@ public:
   /// Add many measurements to be integrated
   void addMeasurements(const ImuMeasurements& ms);
 
+  inline void get_W_g_B(Eigen::Vector3d& W_g_B) const {
+    
+  }
+
 private:
   bool last_imu_measurement_set_;
   ImuMeasurement last_imu_measurement;

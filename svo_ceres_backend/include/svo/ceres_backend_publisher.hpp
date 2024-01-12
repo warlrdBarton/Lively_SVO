@@ -60,6 +60,9 @@ public:
                const int32_t seq);
   void publish(ViNodeState& state, const int64_t timestamp,
                const int32_t seq);
+               
+  void publishPropagationOdometry(const int64_t timestamp, const Transformation& T_WS,
+                                  const Eigen::Vector3d& W_v_B, const Eigen::Vector3d& W_g_B);
 
 private:
   ros::NodeHandle pnh_;
@@ -80,6 +83,7 @@ private:
   ros::Publisher pub_points_;
   ros::Publisher pub_lines_;
   ros::Publisher pub_twist_; 
+  ros::Publisher pub_propagation_odometry_;
 
 
   // publisher functions
@@ -89,9 +93,8 @@ private:
 
   void publishBackendSegmentLandmarks(const int64_t timestamp) const;
 
-  void publishImuTwist(ViNodeState& state,
-                                           const int64_t timestamp,
-                                           const int32_t seq);
+  void publishImuTwist(ViNodeState& state, const int64_t timestamp,
+                       const int32_t seq);
 };
 
 }  // namespace svo
