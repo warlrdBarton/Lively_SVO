@@ -14,7 +14,7 @@
 #include <svo/direct/feature_detection_utils.h>
 
 // #define SEGMENT_ENABLE_MATCH
-#define SEGMENT_ENABLE_STEREO_TRIANGULATION
+// #define SEGMENT_ENABLE_STEREO_TRIANGULATION
 #define NAME_VALUE_LOG(x) std::cout << #x << ": \n" << (x) << std::endl;
 
 #ifdef SEGMENT_ENABLE_MATCH
